@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 import CoreImage
 
-class CameraManager: NSObject {
+class CameraManager: NSObject, ObservableObject {
     private let captureSession = AVCaptureSession()
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
@@ -29,6 +29,17 @@ class CameraManager: NSObject {
     
     private var currentPosition: AVCaptureDevice.Position = .front
     
+    @Published private(set) var isRecording: Bool = false
+    @Published private(set) var recordingProgress: Double = 0
+    @Published private(set) var flipCountdown: Int = 0
+    @Published private(set) var countdown: Int = 0
+    @Published private(set) var shouldShowCountdown: Bool = false
+    
+    private var recordingStartTime: Date?
+    private var recordingTimer: Timer?
+    private let totalRecordingDuration: TimeInterval = 10.0
+    private let flipCameraTime: TimeInterval = 5.0
+    
     override init() {
         super.init()
         sessionQueue.async {
@@ -40,12 +51,13 @@ class CameraManager: NSObject {
         print("CameraManager deinit")
         isCancelled = true
         captureSession.stopRunning()
+        recordingTimer?.invalidate()
     }
     
     private func setupSession() {
         Task {
             await configureSession()
-            await startSession()
+            startSession()
         }
     }
     
@@ -145,13 +157,15 @@ class CameraManager: NSObject {
         captureSession.commitConfiguration()
     }
     
-    private func startSession() {
+    func startSession() {
         isCancelled = false
         guard !captureSession.isRunning else { return }
-        captureSession.startRunning()
+        sessionQueue.async {
+            self.captureSession.startRunning()
+        }
     }
     
-    private func stopSession() {
+    func stopSession() {
         isCancelled = true
         sessionQueue.async {
             self.captureSession.stopRunning()
@@ -159,12 +173,75 @@ class CameraManager: NSObject {
     }
     
     func toggleCamera() {
+        stopSession()
+        
         sessionQueue.async {
             self.currentPosition = self.currentPosition == .front ? .back : .front
             Task {
                 await self.configureSession()
-                await self.startSession()
+                self.startSession()
             }
+        }
+    }
+    
+    func startRecording() {
+        guard !isRecording else { return }
+        isRecording = true
+        recordingStartTime = Date()
+        
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self,
+                  let startTime = self.recordingStartTime else { return }
+            
+            let elapsed = Date().timeIntervalSince(startTime)
+            
+            DispatchQueue.main.async {
+                self.recordingProgress = elapsed / self.totalRecordingDuration
+                
+                // Handle countdown for both segments
+                if elapsed < self.flipCameraTime {
+                    // First 5 seconds
+                    let timeLeft = self.flipCameraTime - elapsed
+                    if timeLeft <= 3 {
+                        self.countdown = Int(ceil(timeLeft))
+                        // Hide the countdown when it reaches 1 and we're about to flip
+                        self.shouldShowCountdown = timeLeft > 0.1
+                    }
+                } else {
+                    // Second 5 seconds
+                    let timeLeft = self.totalRecordingDuration - elapsed
+                    let timeInSecondHalf = elapsed - self.flipCameraTime
+                    
+                    if timeLeft <= 3 {
+                        self.countdown = Int(ceil(timeLeft))
+                        // Only show countdown after 2 seconds in the second half
+                        self.shouldShowCountdown = timeInSecondHalf >= 2.0
+                    }
+                }
+                
+                // Handle camera flip at halfway point
+                if elapsed >= self.flipCameraTime && elapsed < (self.flipCameraTime + 0.1) {
+                    self.toggleCamera()
+                }
+                
+                // Stop recording at max duration
+                if elapsed >= self.totalRecordingDuration {
+                    self.stopRecording()
+                }
+            }
+        }
+    }
+    
+    func stopRecording() {
+        recordingStartTime = nil
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.recordingProgress = 0
+            self.countdown = 0
+            self.shouldShowCountdown = false
         }
     }
 }

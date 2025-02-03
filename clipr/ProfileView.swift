@@ -7,6 +7,7 @@ struct ProfileView: View {
         VStack {
             Text("Profile")
                 .font(.largeTitle)
+                
             
             Spacer()
             

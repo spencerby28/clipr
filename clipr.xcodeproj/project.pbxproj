@@ -67,6 +67,7 @@
 		09CB107A2D51538800AD5446 /* CIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10772D51538800AD5446 /* CIImage+Extension.swift */; };
 		09CB107B2D51538800AD5446 /* CMSampleBuffer+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */; };
 		09CB107D2D5153A600AD5446 /* CameraViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB107C2D5153A600AD5446 /* CameraViewModel.swift */; };
+		09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB107E2D51663D00AD5446 /* RecordButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +95,7 @@
 		09CB10772D51538800AD5446 /* CIImage+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CIImage+Extension.swift"; sourceTree = "<group>"; };
 		09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CMSampleBuffer+Extension.swift"; sourceTree = "<group>"; };
 		09CB107C2D5153A600AD5446 /* CameraViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraViewModel.swift; sourceTree = "<group>"; };
+		09CB107E2D51663D00AD5446 /* RecordButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +168,7 @@
 				09CB105F2D513C5B00AD5446 /* Appwrite.swift */,
 				09CB10652D513C5B00AD5446 /* Assets.xcassets */,
 				09CB10742D5152F200AD5446 /* CameraManager.swift */,
+				09CB107E2D51663D00AD5446 /* RecordButton.swift */,
 				09CB10762D51538800AD5446 /* CameraPreviewView.swift */,
 				09CB10772D51538800AD5446 /* CIImage+Extension.swift */,
 				09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */,
@@ -325,6 +328,7 @@
 			files = (
 				09CB106F2D513C5B00AD5446 /* FeedView.swift in Sources */,
 				09CB10752D5152F200AD5446 /* CameraManager.swift in Sources */,
+				09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */,
 				09CB10712D513C5B00AD5446 /* ContentView.swift in Sources */,
 				092AE3202D51252A0055BDBB /* ContentView.swift in Sources */,
 				09CB106E2D513C5B00AD5446 /* ProfileView.swift in Sources */,

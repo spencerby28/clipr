@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct CameraView: View {
-    @StateObject private var viewModel = CameraViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var cameraManager = CameraManager()
+    @State private var currentFrame: CGImage?
     
     var body: some View {
         GeometryReader { geometry in
@@ -16,7 +17,7 @@ struct CameraView: View {
                 VStack {
                     // Camera Preview Container
                     ZStack {
-                        if let image = viewModel.currentFrame {
+                        if let image = currentFrame {
                             Image(decorative: image, scale: 1.0)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -38,9 +39,7 @@ struct CameraView: View {
                                 Spacer()
                                 // Camera Toggle Button
                                 Button(action: {
-                                    Task {
-                                        viewModel.toggleCamera()
-                                    }
+                                    cameraManager.toggleCamera()
                                 }) {
                                     Image(systemName: "camera.rotate.fill")
                                         .font(.system(size: 20))
@@ -55,33 +54,50 @@ struct CameraView: View {
                             Spacer()
                             
                             // Record Button
-                            Button(action: {
-                                viewModel.toggleRecording()
-                            }) {
-                                Circle()
-                                    .fill(viewModel.isRecording ? Color.red : Color.white)
-                                    .frame(width: 72, height: 72)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.white, lineWidth: 4)
-                                    )
+                            VStack {
+                                Spacer()
+                                RecordButton(
+                                    isRecording: cameraManager.isRecording,
+                                    progress: cameraManager.recordingProgress,
+                                    action: {
+                                        if cameraManager.isRecording {
+                                            cameraManager.stopRecording()
+                                        } else {
+                                            cameraManager.startRecording()
+                                        }
+                                    }
+                                )
+                                .padding(.bottom, 30)
                             }
-                            .padding(.bottom, 24)
                         }
                     }
                     .padding(.horizontal, 16)
                     
                     Spacer()
                 }
+                
+                // Update the countdown overlay to use the new countdown property
+                if cameraManager.countdown > 0 && cameraManager.shouldShowCountdown {
+                    Text("\(cameraManager.countdown)")
+                        .font(.system(size: 60, weight: .bold))
+                        .foregroundColor(.white)
+                        .position(x: 50, y: 50)
+                }
+            }
+            .task {
+                // Start camera preview stream
+                for await image in cameraManager.previewStream {
+                    currentFrame = image
+                }
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 switch newPhase {
                 case .active:
                     print("Scene became active")
-                    viewModel.startPreviewStream()
+                    cameraManager.startSession()
                 case .inactive, .background:
                     print("Scene became inactive/background")
-                    viewModel.stopPreviewStream()
+                    cameraManager.stopSession()
                 @unknown default:
                     break
                 }
@@ -92,11 +108,11 @@ struct CameraView: View {
                 print("- Width: \(viewWidth)")
                 print("- Preview height: \(previewHeight)")
                 print("- Aspect ratio: \(viewWidth/previewHeight)")
-                viewModel.startPreviewStream()
+                cameraManager.startSession()
             }
             .onDisappear {
                 print("CameraView disappeared")
-                viewModel.stopPreviewStream()
+                cameraManager.stopSession()
             }
         }
     }
