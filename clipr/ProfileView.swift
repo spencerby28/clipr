@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var navigationState: NavigationState
-    let appwrite = Appwrite()
     
     var body: some View {
         VStack {
@@ -13,14 +12,7 @@ struct ProfileView: View {
             
             Button(action: {
                 Task {
-                    do {
-                        try await appwrite.onLogout()
-                        await MainActor.run {
-                            navigationState.isLoggedIn = false
-                        }
-                    } catch {
-                        print("Logout error: \(error)")
-                    }
+                    await navigationState.signOut()
                 }
             }) {
                 Text("Logout")

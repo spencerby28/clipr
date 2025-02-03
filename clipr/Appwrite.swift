@@ -24,6 +24,17 @@ class Appwrite {
         self.databases = Databases(client)
     }
     
+    public func checkSession() async -> Bool {
+        do {
+            // Try to get the current session
+            let sessions = try await account.listSessions()
+            return !sessions.sessions.isEmpty
+        } catch {
+            print("Session check error: \(error)")
+            return false
+        }
+    }
+    
     public func onRegister(
         _ email: String,
         _ password: String

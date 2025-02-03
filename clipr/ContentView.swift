@@ -17,7 +17,10 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            if navigationState.isLoggedIn {
+            if navigationState.isCheckingAuth {
+                ProgressView("Checking authentication...")
+                    .progressViewStyle(.circular)
+            } else if navigationState.isLoggedIn {
                 MainTabView()
                     .environmentObject(navigationState)
             } else {
@@ -50,59 +53,49 @@ struct AuthView: View {
             )
             .textFieldStyle(RoundedBorderTextFieldStyle())
             
-            Button(
-                action: {
-                    Task {
-                        do {
-                            try await appwrite.onRegister(
-                                viewModel.email,
-                                viewModel.password
-                            )
-                            await MainActor.run {
-                                navigationState.isLoggedIn = true
-                            }
-                        } catch {
-                            errorMessage = error.localizedDescription
-                            showError = true
-                        }
+            Button(action: {
+                Task {
+                    do {
+                        try await appwrite.onRegister(
+                            viewModel.email,
+                            viewModel.password
+                        )
+                        await navigationState.checkAuthStatus()
+                    } catch {
+                        errorMessage = error.localizedDescription
+                        showError = true
                     }
-                },
-                label: {
-                    Text("Register")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                 }
-            )
+            }) {
+                Text("Register")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
             
-            Button(
-                action: {
-                    Task {
-                        do {
-                            try await appwrite.onLogin(
-                                viewModel.email,
-                                viewModel.password
-                            )
-                            await MainActor.run {
-                                navigationState.isLoggedIn = true
-                            }
-                        } catch {
-                            errorMessage = error.localizedDescription
-                            showError = true
-                        }
+            Button(action: {
+                Task {
+                    do {
+                        try await appwrite.onLogin(
+                            viewModel.email,
+                            viewModel.password
+                        )
+                        await navigationState.checkAuthStatus()
+                    } catch {
+                        errorMessage = error.localizedDescription
+                        showError = true
                     }
-                },
-                label: {
-                    Text("Login")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                 }
-            )
+            }) {
+                Text("Login")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
         }
         .padding()
         .alert("Error", isPresented: $showError) {
