@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct CameraView: View {
-    @State private var viewModel = CameraViewModel()
+    @StateObject private var viewModel = CameraViewModel()
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         GeometryReader { geometry in
@@ -38,7 +39,7 @@ struct CameraView: View {
                                 // Camera Toggle Button
                                 Button(action: {
                                     Task {
-                                        await viewModel.toggleCamera()
+                                        viewModel.toggleCamera()
                                     }
                                 }) {
                                     Image(systemName: "camera.rotate.fill")
@@ -73,11 +74,29 @@ struct CameraView: View {
                     Spacer()
                 }
             }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                switch newPhase {
+                case .active:
+                    print("Scene became active")
+                    viewModel.startPreviewStream()
+                case .inactive, .background:
+                    print("Scene became inactive/background")
+                    viewModel.stopPreviewStream()
+                @unknown default:
+                    break
+                }
+            }
             .onAppear {
+                print("CameraView appeared")
                 print("Screen dimensions:")
                 print("- Width: \(viewWidth)")
                 print("- Preview height: \(previewHeight)")
                 print("- Aspect ratio: \(viewWidth/previewHeight)")
+                viewModel.startPreviewStream()
+            }
+            .onDisappear {
+                print("CameraView disappeared")
+                viewModel.stopPreviewStream()
             }
         }
     }

@@ -7,22 +7,22 @@ class CameraManager: NSObject {
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
     private let sessionQueue = DispatchQueue(label: "video.preview.session", qos: .userInitiated)
-    private let processingQueue = DispatchQueue(label: "video.preview.processing", qos: .userInteractive)
+    private let processingQueue = DispatchQueue(label: "video.preview.processing", qos: .userInteractive, attributes: .concurrent)
     private var lastFrameTime = CACurrentMediaTime()
-    private let desiredFrameRate: Double = 30.0 // Limit to 30fps
+    private let desiredFrameRate: Double = 60.0 // Increased to 60fps
     
     private var addToPreviewStream: ((CGImage) -> Void)?
     private var isCancelled = false
     
     lazy var previewStream: AsyncStream<CGImage> = {
         AsyncStream { continuation in
-            addToPreviewStream = { [weak self] cgImage in
-                guard let self = self, !self.isCancelled else { return }
+            addToPreviewStream = { [self] cgImage in
+                guard !self.isCancelled else { return }
                 continuation.yield(cgImage)
             }
             
-            continuation.onTermination = { [weak self] _ in
-                self?.isCancelled = true
+            continuation.onTermination = { [self] _ in
+                self.isCancelled = true
             }
         }
     }()
@@ -31,13 +31,15 @@ class CameraManager: NSObject {
     
     override init() {
         super.init()
-        sessionQueue.async { [weak self] in
-            self?.setupSession()
+        sessionQueue.async {
+            self.setupSession()
         }
     }
     
     deinit {
-        stopSession()
+        print("CameraManager deinit")
+        isCancelled = true
+        captureSession.stopRunning()
     }
     
     private func setupSession() {
@@ -71,19 +73,34 @@ class CameraManager: NSObject {
         
         captureSession.beginConfiguration()
         
-        // Set session preset for vertical 16:9
-        captureSession.sessionPreset = .hd1920x1080
+        // Set high quality preset
+        captureSession.sessionPreset = .high
         
         do {
             try videoDevice.lockForConfiguration()
+            
+            // Configure for 60fps
+            let formats = videoDevice.formats
+            let targetFormat = formats.first { format in
+                let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+                let maxRate = format.videoSupportedFrameRateRanges.first?.maxFrameRate ?? 0
+                return maxRate >= 60.0 && dimensions.width >= 1280
+            }
+            
+            if let format = targetFormat {
+                videoDevice.activeFormat = format
+                print("Selected format: \(format)")
+                
+                // Set to 60fps
+                let targetFPS = CMTime(value: 1, timescale: 60)
+                videoDevice.activeVideoMinFrameDuration = targetFPS
+                videoDevice.activeVideoMaxFrameDuration = targetFPS
+            }
+            
             let dimensions = CMVideoFormatDescriptionGetDimensions(videoDevice.activeFormat.formatDescription)
             print("Camera format: \(dimensions.width)x\(dimensions.height)")
-            print("Setting up vertical 16:9 capture")
+            print("Frame rate: \(videoDevice.activeVideoMinFrameDuration.timescale)")
             
-            // Set frame rate
-            let targetFPS = CMTime(value: 1, timescale: CMTimeScale(desiredFrameRate))
-            videoDevice.activeVideoMinFrameDuration = targetFPS
-            videoDevice.activeVideoMaxFrameDuration = targetFPS
             videoDevice.unlockForConfiguration()
         } catch {
             print("Error configuring device: \(error)")
@@ -96,6 +113,11 @@ class CameraManager: NSObject {
         let videoOutput = AVCaptureVideoDataOutput()
         videoOutput.setSampleBufferDelegate(self, queue: processingQueue)
         videoOutput.alwaysDiscardsLateVideoFrames = true
+        
+        // Set video output settings for better performance
+        videoOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
         
         if let connection = videoOutput.connection(with: .video) {
             if connection.isVideoOrientationSupported {
@@ -124,22 +146,24 @@ class CameraManager: NSObject {
     }
     
     private func startSession() {
+        isCancelled = false
         guard !captureSession.isRunning else { return }
         captureSession.startRunning()
     }
     
     private func stopSession() {
-        sessionQueue.async { [weak self] in
-            self?.captureSession.stopRunning()
+        isCancelled = true
+        sessionQueue.async {
+            self.captureSession.stopRunning()
         }
     }
     
     func toggleCamera() {
-        sessionQueue.async { [weak self] in
-            guard let self = self else { return }
+        sessionQueue.async {
             self.currentPosition = self.currentPosition == .front ? .back : .front
             Task {
                 await self.configureSession()
+                await self.startSession()
             }
         }
     }
@@ -152,24 +176,26 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         let currentTime = CACurrentMediaTime()
         let elapsed = currentTime - lastFrameTime
         
-        guard elapsed >= 1.0 / desiredFrameRate else { return }
+        // More permissive frame rate check
+        guard elapsed >= (1.0 / (desiredFrameRate * 1.1)) else { return }
         lastFrameTime = currentTime
         
         guard var currentFrame = sampleBuffer.cgImage else { return }
         
-        // Rotate the image -90 degrees
-        if let rotatedImage = rotateImage(currentFrame, byDegrees: -90) {
-            currentFrame = rotatedImage
-        }
-        
-        // Mirror the image if using front camera
-        if currentPosition == .front {
-            if let mirroredImage = mirrorImage(currentFrame) {
-                currentFrame = mirroredImage
+        // Use strong reference for image processing
+        processingQueue.async {
+            if let rotatedImage = self.rotateImage(currentFrame, byDegrees: -90) {
+                currentFrame = rotatedImage
+                
+                if self.currentPosition == .front {
+                    if let mirroredImage = self.mirrorImage(currentFrame) {
+                        currentFrame = mirroredImage
+                    }
+                }
+                
+                self.addToPreviewStream?(currentFrame)
             }
         }
-        
-        addToPreviewStream?(currentFrame)
     }
     
     private func rotateImage(_ image: CGImage, byDegrees degrees: CGFloat) -> CGImage? {
