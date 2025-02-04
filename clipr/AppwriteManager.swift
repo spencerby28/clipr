@@ -1,8 +1,10 @@
 import Foundation
 import SwiftUI
+import Appwrite
 
 class AppwriteManager: ObservableObject {
     static let shared = AppwriteManager()
+    static let bucketId = "clips"
     
     private let appwrite: Appwrite
     
@@ -30,6 +32,19 @@ class AppwriteManager: ObservableObject {
     /// Returns a public URL for the uploaded video.
     func getVideoURL(fileId: String, bucketId: String) -> URL? {
         return appwrite.getFileViewURL(bucketId: bucketId, fileId: fileId)
+    }
+    
+    /// Lists all videos in the clips bucket
+    func listVideos() async throws -> [AppwriteModels.File] {
+        do {
+            let files = try await appwrite.storage.listFiles(
+                bucketId: AppwriteManager.bucketId
+            )
+            return files.files
+        } catch {
+            print("Error listing videos: \(error)")
+            throw error
+        }
     }
     
     // MARK: - Authentication Methods

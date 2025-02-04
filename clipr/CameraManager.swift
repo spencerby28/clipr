@@ -38,8 +38,8 @@ class CameraManager: NSObject, ObservableObject {
     
     private var recordingStartTime: Date?
     private var recordingTimer: Timer?
-    private let totalRecordingDuration: TimeInterval = 10.0
-    private let flipCameraTime: TimeInterval = 5.0
+    private let totalRecordingDuration: TimeInterval = 6.0
+    private let flipCameraTime: TimeInterval = 3.0
     
     private var movieOutput: AVCaptureMovieFileOutput?
     private var videoURLs: [URL] = []

@@ -1,57 +1,70 @@
 import SwiftUI
+import Appwrite
+import AVKit
 
 struct FeedView: View {
+    @StateObject private var videoManager: VideoLoadingManager
+    @StateObject private var viewModel: FeedViewModel
+    
+    init() {
+        let manager = VideoLoadingManager()
+        _videoManager = StateObject(wrappedValue: manager)
+        _viewModel = StateObject(wrappedValue: FeedViewModel(videoManager: manager))
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 0) {
-                    ForEach(0..<10) { index in
-                        VideoPlaceholderView(index: index)
-                            .frame(width: geometry.size.width, height: geometry.size.height)
+                    ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                        if let url = AppwriteManager.shared.getVideoURL(fileId: video.id, bucketId: AppwriteManager.bucketId) {
+                            SimpleVideoView(url: url, index: index, videoManager: videoManager)
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .id(index)
+                        } else {
+                            Text("Failed to load video")
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                        }
                     }
                 }
             }
             .scrollTargetBehavior(.paging)
+            .ignoresSafeArea()
+            .statusBar(hidden: true)
+            .onAppear {
+                Task {
+                    await viewModel.loadVideos()
+                }
+            }
+        }
+        .ignoresSafeArea(edges: .all)
+    }
+}
+
+class FeedViewModel: ObservableObject {
+    @Published var videos: [AppwriteModels.File] = []
+    private let appwrite = AppwriteManager.shared
+    private let videoManager: VideoLoadingManager
+    
+    init(videoManager: VideoLoadingManager) {
+        self.videoManager = videoManager
+    }
+    
+    @MainActor
+    func loadVideos() async {
+        do {
+            self.videos = try await appwrite.listVideos()
+            // Convert to URLs
+            let urls = videos.compactMap { video in
+                AppwriteManager.shared.getVideoURL(fileId: video.id, bucketId: AppwriteManager.bucketId)
+            }
+            videoManager.setVideos(urls)
+        } catch {
+            print("Error loading videos: \(error)")
         }
     }
 }
 
-struct VideoPlaceholderView: View {
-    let index: Int
-    
-    var body: some View {
-        ZStack {
-            Color(hue: Double(index) / 10, saturation: 0.8, brightness: 0.8)
-            
-            VStack {
-                Spacer()
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Username")
-                            .font(.headline)
-                        Text("Video description")
-                            .font(.subheadline)
-                    }
-                    Spacer()
-                    
-                    VStack(spacing: 20) {
-                        Button(action: {}) {
-                            Image(systemName: "heart")
-                                .font(.title)
-                        }
-                        Button(action: {}) {
-                            Image(systemName: "message")
-                                .font(.title)
-                        }
-                        Button(action: {}) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.title)
-                        }
-                    }
-                }
-                .padding()
-                .foregroundColor(.white)
-            }
-        }
-    }
-} 
+#Preview {
+    FeedView()
+}

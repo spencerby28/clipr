@@ -140,7 +140,7 @@ struct CameraView: View {
                     videoURL: videoURL,
                     onRetake: {
                         cameraManager.showingPreview = false
-                        // Add delay to allow dismissal animation
+                        // Delay to allow the dismissal animation, then restart recording.
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             cameraManager.startRecording()
                         }

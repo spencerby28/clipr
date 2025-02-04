@@ -99,7 +99,7 @@ class Appwrite {
     
 public func getFileViewURL(bucketId: String, fileId: String) -> URL? {
         let endpoint = "https://appwrite.sb28.xyz/v1"
-        let urlString = "\(endpoint)/storage/buckets/\(bucketId)/files/\(fileId)/view"
+        let urlString = "\(endpoint)/storage/buckets/\(bucketId)/files/\(fileId)/view?project=clipr"
         return URL(string: urlString)
 }
 }
