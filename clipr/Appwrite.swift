@@ -13,6 +13,7 @@ class Appwrite {
     var client: Client
     var account: Account
     var databases: Databases
+    var storage: Storage
     
     public init() {
         self.client = Client()
@@ -22,6 +23,7 @@ class Appwrite {
         
         self.account = Account(client)
         self.databases = Databases(client)
+        self.storage = Storage(client)
     }
     
     public func checkSession() async -> Bool {
@@ -78,5 +80,27 @@ class Appwrite {
         }
     }
     
+    // Add video storage methods
+    public func uploadVideo(fileData: Data, fileName: String) async throws -> File {
+        do {
+            let inputFile = InputFile.fromData(fileData, filename: fileName, mimeType: "video/mp4")
+            
+            let file = try await storage.createFile(
+                bucketId: "clips",
+                fileId: ID.unique(),
+                file: inputFile
+            )
+            return file
+        } catch {
+            print("Video upload error: \(error)")
+            throw error
+        }
+    }
+    
+public func getFileViewURL(bucketId: String, fileId: String) -> URL? {
+        let endpoint = "https://appwrite.sb28.xyz/v1"
+        let urlString = "\(endpoint)/storage/buckets/\(bucketId)/files/\(fileId)/view"
+        return URL(string: urlString)
+}
 }
 

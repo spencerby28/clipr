@@ -37,18 +37,20 @@ struct CameraView: View {
                         VStack {
                             HStack {
                                 Spacer()
-                                // Camera Toggle Button
-                                Button(action: {
-                                    cameraManager.toggleCamera()
-                                }) {
-                                    Image(systemName: "camera.rotate.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.white)
-                                        .padding(12)
-                                        .background(Color.black.opacity(0.5))
-                                        .clipShape(Circle())
+                                // Only show camera toggle when not recording
+                                if !cameraManager.isRecording {
+                                    Button(action: {
+                                        cameraManager.toggleCamera()
+                                    }) {
+                                        Image(systemName: "camera.rotate.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(.white)
+                                            .padding(12)
+                                            .background(Color.black.opacity(0.5))
+                                            .clipShape(Circle())
+                                    }
+                                    .padding(16)
                                 }
-                                .padding(16)
                             }
                             
                             Spacer()
@@ -60,13 +62,13 @@ struct CameraView: View {
                                     isRecording: cameraManager.isRecording,
                                     progress: cameraManager.recordingProgress,
                                     action: {
-                                        if cameraManager.isRecording {
-                                            cameraManager.stopRecording()
-                                        } else {
+                                        if !cameraManager.isRecording {
                                             cameraManager.startRecording()
                                         }
+                                        // Remove stop recording action since it's handled automatically
                                     }
                                 )
+                                .disabled(cameraManager.isRecording) // Disable during recording
                                 .padding(.bottom, 30)
                             }
                         }
@@ -76,12 +78,25 @@ struct CameraView: View {
                     Spacer()
                 }
                 
-                // Update the countdown overlay to use the new countdown property
-                if cameraManager.countdown > 0 && cameraManager.shouldShowCountdown {
+                // Countdown overlay
+                if cameraManager.shouldShowCountdown {
                     Text("\(cameraManager.countdown)")
-                        .font(.system(size: 60, weight: .bold))
+                        .font(.system(size: 120, weight: .bold))
                         .foregroundColor(.white)
-                        .position(x: 50, y: 50)
+                        .shadow(radius: 10)
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.easeInOut, value: cameraManager.countdown)
+                }
+                
+                // Optional: Add a progress indicator at the top
+                GeometryReader { metrics in
+                    if cameraManager.isRecording {
+                        Rectangle()
+                            .fill(Color.white)
+                            .frame(width: metrics.size.width * CGFloat(cameraManager.recordingProgress),
+                                   height: 4)
+                            .position(x: metrics.size.width/2, y: 2)
+                    }
                 }
             }
             .task {
@@ -97,7 +112,9 @@ struct CameraView: View {
                     cameraManager.startSession()
                 case .inactive, .background:
                     print("Scene became inactive/background")
-                    cameraManager.stopSession()
+                    if !cameraManager.isRecording {
+                        cameraManager.stopSession()
+                    }
                 @unknown default:
                     break
                 }
@@ -112,7 +129,29 @@ struct CameraView: View {
             }
             .onDisappear {
                 print("CameraView disappeared")
-                cameraManager.stopSession()
+                if !cameraManager.isRecording {
+                    cameraManager.stopSession()
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $cameraManager.showingPreview) {
+            if let videoURL = cameraManager.lastRecordedVideoURL {
+                VideoPreviewView(
+                    videoURL: videoURL,
+                    onRetake: {
+                        cameraManager.showingPreview = false
+                        // Add delay to allow dismissal animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            cameraManager.startRecording()
+                        }
+                    },
+                    onSend: {
+                        Task {
+                            await cameraManager.sendVideo()
+                            cameraManager.showingPreview = false
+                        }
+                    }
+                )
             }
         }
     }

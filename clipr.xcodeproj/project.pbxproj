@@ -68,6 +68,9 @@
 		09CB107B2D51538800AD5446 /* CMSampleBuffer+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */; };
 		09CB107D2D5153A600AD5446 /* CameraViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB107C2D5153A600AD5446 /* CameraViewModel.swift */; };
 		09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB107E2D51663D00AD5446 /* RecordButton.swift */; };
+		09CB10812D51995700AD5446 /* AppwriteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10802D51995700AD5446 /* AppwriteManager.swift */; };
+		09CB10832D51997300AD5446 /* VideoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10822D51997300AD5446 /* VideoPreviewView.swift */; };
+		09CB10852D51A46800AD5446 /* VideoConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10842D51A46800AD5446 /* VideoConversion.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -96,6 +99,9 @@
 		09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "CMSampleBuffer+Extension.swift"; sourceTree = "<group>"; };
 		09CB107C2D5153A600AD5446 /* CameraViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraViewModel.swift; sourceTree = "<group>"; };
 		09CB107E2D51663D00AD5446 /* RecordButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
+		09CB10802D51995700AD5446 /* AppwriteManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppwriteManager.swift; sourceTree = "<group>"; };
+		09CB10822D51997300AD5446 /* VideoPreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoPreviewView.swift; sourceTree = "<group>"; };
+		09CB10842D51A46800AD5446 /* VideoConversion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoConversion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -169,13 +175,16 @@
 				09CB10652D513C5B00AD5446 /* Assets.xcassets */,
 				09CB10742D5152F200AD5446 /* CameraManager.swift */,
 				09CB107E2D51663D00AD5446 /* RecordButton.swift */,
+				09CB10802D51995700AD5446 /* AppwriteManager.swift */,
 				09CB10762D51538800AD5446 /* CameraPreviewView.swift */,
 				09CB10772D51538800AD5446 /* CIImage+Extension.swift */,
+				09CB10842D51A46800AD5446 /* VideoConversion.swift */,
 				09CB10782D51538800AD5446 /* CMSampleBuffer+Extension.swift */,
 				09CB107C2D5153A600AD5446 /* CameraViewModel.swift */,
 				09CB10622D513C5B00AD5446 /* CameraView.swift */,
 				09CB10722D5152C000AD5446 /* CameraPreviewView.swift */,
 				09CB105E2D513C5B00AD5446 /* cliprApp.swift */,
+				09CB10822D51997300AD5446 /* VideoPreviewView.swift */,
 				09CB10662D513C5B00AD5446 /* ContentView.swift */,
 				09CB10642D513C5B00AD5446 /* FeedView.swift */,
 				09CB10602D513C5B00AD5446 /* GoogleService-Info.plist */,
@@ -334,6 +343,9 @@
 				09CB106E2D513C5B00AD5446 /* ProfileView.swift in Sources */,
 				09CB10692D513C5B00AD5446 /* cliprApp.swift in Sources */,
 				09CB10672D513C5B00AD5446 /* NavigationState.swift in Sources */,
+				09CB10812D51995700AD5446 /* AppwriteManager.swift in Sources */,
+				09CB10852D51A46800AD5446 /* VideoConversion.swift in Sources */,
+				09CB10832D51997300AD5446 /* VideoPreviewView.swift in Sources */,
 				09CB106A2D513C5B00AD5446 /* Appwrite.swift in Sources */,
 				09CB106C2D513C5B00AD5446 /* MainTabView.swift in Sources */,
 				09CB10732D5152C000AD5446 /* CameraPreviewView.swift in Sources */,
@@ -482,6 +494,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "You'll need to allow camera access to take your first Clip. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "To record Clips with audio, you'll need to allow microphone access";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = hi;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = hello;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -517,6 +531,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "You'll need to allow camera access to take your first Clip. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "To record Clips with audio, you'll need to allow microphone access";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = hi;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = hello;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

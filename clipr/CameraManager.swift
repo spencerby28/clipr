@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import CoreImage
+import Photos
 
 class CameraManager: NSObject, ObservableObject {
     private let captureSession = AVCaptureSession()
@@ -40,6 +41,19 @@ class CameraManager: NSObject, ObservableObject {
     private let totalRecordingDuration: TimeInterval = 10.0
     private let flipCameraTime: TimeInterval = 5.0
     
+    private var movieOutput: AVCaptureMovieFileOutput?
+    private var videoURLs: [URL] = []
+    @Published private(set) var savedVideos: [URL] = []
+    
+    private var firstHalfURL: URL?
+    private var secondHalfURL: URL?
+    private var isRecordingFirstHalf = true
+    
+    private var audioDeviceInput: AVCaptureDeviceInput?
+    
+    @Published private(set) var lastRecordedVideoURL: URL?
+    @Published var showingPreview = false
+    
     override init() {
         super.init()
         sessionQueue.async {
@@ -76,12 +90,31 @@ class CameraManager: NSObject, ObservableObject {
     }
     
     private func configureSession() async {
-        guard await isAuthorized,
-              let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera,
+        guard await isAuthorized else { return }
+        
+        // Add audio authorization check
+        let audioStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        let audioAuthorized: Bool
+        if audioStatus == .authorized {
+            audioAuthorized = true
+        } else if audioStatus == .notDetermined {
+            audioAuthorized = await AVCaptureDevice.requestAccess(for: .audio)
+        } else {
+            audioAuthorized = false
+        }
+        
+        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera,
                                                        for: .video,
                                                        position: currentPosition),
               let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice)
         else { return }
+        
+        // Setup audio input if authorized
+        if audioAuthorized,
+           let audioDevice = AVCaptureDevice.default(for: .audio),
+           let audioInput = try? AVCaptureDeviceInput(device: audioDevice) {
+            audioDeviceInput = audioInput
+        }
         
         captureSession.beginConfiguration()
         
@@ -154,6 +187,23 @@ class CameraManager: NSObject, ObservableObject {
         self.deviceInput = videoDeviceInput
         self.videoOutput = videoOutput
         
+        // Add movie output configuration after existing video output setup
+        let movieOutput = AVCaptureMovieFileOutput()
+        
+        guard captureSession.canAddOutput(movieOutput) else {
+            captureSession.commitConfiguration()
+            return
+        }
+        
+        captureSession.addOutput(movieOutput)
+        self.movieOutput = movieOutput
+        
+        // Add audio input if available
+        if let audioInput = audioDeviceInput,
+           captureSession.canAddInput(audioInput) {
+            captureSession.addInput(audioInput)
+        }
+        
         captureSession.commitConfiguration()
     }
     
@@ -188,60 +238,229 @@ class CameraManager: NSObject, ObservableObject {
         guard !isRecording else { return }
         isRecording = true
         recordingStartTime = Date()
+        isRecordingFirstHalf = true
+
+        // Create temporary URL for the first segment.
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = "recording_part1_\(Date().timeIntervalSince1970).mov"
+        let fileURL = tempDir.appendingPathComponent(fileName)
         
+        // Start recording first segment.
+        movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
+        
+        // Begin a timer to track the first segment's duration.
+        // When flipCameraTime is reached, stop the movie recording.
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self,
                   let startTime = self.recordingStartTime else { return }
-            
             let elapsed = Date().timeIntervalSince(startTime)
-            
             DispatchQueue.main.async {
                 self.recordingProgress = elapsed / self.totalRecordingDuration
-                
-                // Handle countdown for both segments
+                // Optionally update countdown UI.
                 if elapsed < self.flipCameraTime {
-                    // First 5 seconds
                     let timeLeft = self.flipCameraTime - elapsed
                     if timeLeft <= 3 {
                         self.countdown = Int(ceil(timeLeft))
-                        // Hide the countdown when it reaches 1 and we're about to flip
                         self.shouldShowCountdown = timeLeft > 0.1
                     }
-                } else {
-                    // Second 5 seconds
-                    let timeLeft = self.totalRecordingDuration - elapsed
-                    let timeInSecondHalf = elapsed - self.flipCameraTime
-                    
-                    if timeLeft <= 3 {
-                        self.countdown = Int(ceil(timeLeft))
-                        // Only show countdown after 2 seconds in the second half
-                        self.shouldShowCountdown = timeInSecondHalf >= 2.0
-                    }
                 }
-                
-                // Handle camera flip at halfway point
-                if elapsed >= self.flipCameraTime && elapsed < (self.flipCameraTime + 0.1) {
-                    self.toggleCamera()
-                }
-                
-                // Stop recording at max duration
-                if elapsed >= self.totalRecordingDuration {
-                    self.stopRecording()
+                // Stop recording for the first segment at flipCameraTime (5 sec).
+                if elapsed >= self.flipCameraTime {
+                    self.recordingTimer?.invalidate()
+                    self.recordingTimer = nil
+                    self.movieOutput?.stopRecording()
                 }
             }
         }
     }
     
-    func stopRecording() {
-        recordingStartTime = nil
-        recordingTimer?.invalidate()
-        recordingTimer = nil
+    private func startSecondHalfRecordingSegment() {
+        isRecordingFirstHalf = false
         
+        // Create temporary URL for the second segment.
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = "recording_part2_\(Date().timeIntervalSince1970).mov"
+        let fileURL = tempDir.appendingPathComponent(fileName)
+        
+        // Start recording the second segment.
+        movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
+        
+        // Reset timer for the second segment.
+        recordingStartTime = Date()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self = self,
+                  let startTime = self.recordingStartTime else { return }
+            let elapsed = Date().timeIntervalSince(startTime)
+            DispatchQueue.main.async {
+                // Update countdown for second segment if needed.
+                let timeLeft = (self.totalRecordingDuration - self.flipCameraTime) - elapsed
+                if timeLeft <= 3 {
+                    self.countdown = Int(ceil(timeLeft))
+                    if elapsed >= 2.0 { // e.g. show countdown after 2 sec into segment.
+                        self.shouldShowCountdown = true
+                    }
+                }
+                // Stop second recording when its allotted time is reached.
+                if elapsed >= (self.totalRecordingDuration - self.flipCameraTime) {
+                    timer.invalidate()
+                    self.recordingTimer = nil
+                    self.movieOutput?.stopRecording()
+                }
+            }
+        }
+    }
+    
+    // Add method to get saved videos
+    func loadSavedVideos() {
+        // For now, just expose the saved videoURLs
         DispatchQueue.main.async {
-            self.isRecording = false
-            self.recordingProgress = 0
-            self.countdown = 0
-            self.shouldShowCountdown = false
+            self.savedVideos = self.videoURLs
+        }
+    }
+    
+    // Helper method to save video to photo library
+    private func saveVideoToPhotoLibrary(fileURL: URL) {
+        PHPhotoLibrary.requestAuthorization { status in
+            guard status == .authorized else { return }
+            
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileURL)
+            } completionHandler: { success, error in
+                if success {
+                    DispatchQueue.main.async {
+                        self.videoURLs.append(fileURL)
+                        self.savedVideos = self.videoURLs
+                    }
+                } else if let error = error {
+                    print("Error saving video: \(error)")
+                }
+            }
+        }
+    }
+    
+    // Add method to combine videos
+    private func combineVideos(firstHalfURL: URL, secondHalfURL: URL) async {
+        let composition = AVMutableComposition()
+        
+        // Create video track
+        guard let videoTrack = composition.addMutableTrack(
+            withMediaType: .video,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else {
+            print("Failed to create video track")
+            return
+        }
+        
+        // Create audio track (optional)
+        let audioTrack = composition.addMutableTrack(
+            withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        )
+        
+        do {
+            // Load first half asynchronously
+            let firstAsset = AVURLAsset(url: firstHalfURL)
+            let firstVideoTrack = try await firstAsset.loadTracks(withMediaType: .video)[0]
+            let firstDuration = try await firstAsset.load(.duration)
+            let firstRange = CMTimeRange(start: .zero, duration: firstDuration)
+            
+            // Insert video
+            try videoTrack.insertTimeRange(firstRange,
+                                         of: firstVideoTrack,
+                                         at: .zero)
+            
+            // Insert audio if available
+            if let audioTrack = audioTrack,
+               let firstAudioTrack = try? await firstAsset.loadTracks(withMediaType: .audio).first {
+                try audioTrack.insertTimeRange(firstRange,
+                                             of: firstAudioTrack,
+                                             at: .zero)
+            }
+            
+            // Load second half asynchronously
+            let secondAsset = AVURLAsset(url: secondHalfURL)
+            let secondVideoTrack = try await secondAsset.loadTracks(withMediaType: .video)[0]
+            let secondDuration = try await secondAsset.load(.duration)
+            let secondRange = CMTimeRange(start: .zero, duration: secondDuration)
+            
+            // Insert video
+            try videoTrack.insertTimeRange(secondRange,
+                                         of: secondVideoTrack,
+                                         at: firstDuration)
+            
+            // Insert audio if available
+            if let audioTrack = audioTrack,
+               let secondAudioTrack = try? await secondAsset.loadTracks(withMediaType: .audio).first {
+                try audioTrack.insertTimeRange(secondRange,
+                                             of: secondAudioTrack,
+                                             at: firstDuration)
+            }
+            
+            // Export combined video
+            guard let exportSession = AVAssetExportSession(
+                asset: composition,
+                presetName: AVAssetExportPresetHighestQuality
+            ) else {
+                print("Failed to create export session")
+                return
+            }
+            
+            let outputURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("final_recording_\(Date().timeIntervalSince1970).mov")
+            
+            exportSession.outputURL = outputURL
+            exportSession.outputFileType = .mov
+            
+            // Create a video composition to rotate the final output by 90° right.
+            //
+            // We use the natural size from the first video track (assuming both segments match)
+            // and set the render size to be swapped (width becomes height and vice-versa).
+            let videoComposition = AVMutableVideoComposition()
+            videoComposition.frameDuration = CMTime(value: 1, timescale: 60)
+            let naturalSize = firstVideoTrack.naturalSize
+            videoComposition.renderSize = CGSize(width: naturalSize.height, height: naturalSize.width)
+            
+            let instruction = AVMutableVideoCompositionInstruction()
+            instruction.timeRange = CMTimeRange(start: .zero, duration: composition.duration)
+            
+            let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+            // Rotate by 90° to the right: translate by naturalSize.height then rotate by π/2.
+            let rotationTransform = CGAffineTransform(translationX: naturalSize.height, y: 0)
+                .rotated(by: .pi/2)
+            layerInstruction.setTransform(rotationTransform, at: .zero)
+            
+            instruction.layerInstructions = [layerInstruction]
+            videoComposition.instructions = [instruction]
+            exportSession.videoComposition = videoComposition
+
+            // Perform the export asynchronously.
+            await exportSession.export()
+            
+            if exportSession.status == .completed {
+                DispatchQueue.main.async {
+                    self.lastRecordedVideoURL = outputURL
+                    self.showingPreview = true
+                }
+                saveVideoToPhotoLibrary(fileURL: outputURL)
+            } else if let error = exportSession.error {
+                print("Export failed: \(error)")
+            }
+            
+        } catch {
+            print("Error combining videos: \(error)")
+        }
+    }
+    
+    // Add method to handle video sending
+    func sendVideo() async {
+        guard let videoURL = lastRecordedVideoURL else { return }
+        do {
+            let mp4URL = try await convertMovToMp4(inputURL: videoURL)
+            let fileId = try await AppwriteManager.shared.uploadVideo(fileURL: mp4URL)
+            print("Video uploaded successfully with ID: \(fileId)")
+            // Handle successful upload (e.g., save to user's posts)
+        } catch {
+            print("Error uploading video: \(error)")
         }
     }
 }
@@ -320,5 +539,59 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         context.draw(image, in: CGRect(x: 0, y: 0, width: contextWidth, height: contextHeight))
         
         return context.makeImage()
+    }
+}
+
+// Update the delegate methods
+extension CameraManager: AVCaptureFileOutputRecordingDelegate {
+    func fileOutput(_ output: AVCaptureFileOutput,
+                   didFinishRecordingTo outputFileURL: URL,
+                   from connections: [AVCaptureConnection],
+                   error: Error?) {
+        if let error = error {
+            print("Error recording video: \(error)")
+            return
+        }
+        
+        if isRecordingFirstHalf {
+            // First segment finished.
+            firstHalfURL = outputFileURL
+            
+            // Toggle the camera after the first recording.
+            toggleCamera()
+            
+            // After a short delay to allow for session reconfiguration,
+            // start recording the second segment.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.startSecondHalfRecordingSegment()
+            }
+            
+        } else {
+            // Second segment finished.
+            secondHalfURL = outputFileURL
+            
+            // Combine the two segments.
+            if let firstHalfURL = firstHalfURL,
+               let secondHalfURL = secondHalfURL {
+                Task {
+                    await combineVideos(firstHalfURL: firstHalfURL,
+                                      secondHalfURL: secondHalfURL)
+                }
+            }
+            
+            // Reset recording state.
+            DispatchQueue.main.async {
+                self.isRecording = false
+                self.recordingProgress = 0
+                self.countdown = 0
+                self.shouldShowCountdown = false
+            }
+        }
+    }
+    
+    func fileOutput(_ output: AVCaptureFileOutput,
+                   didStartRecordingTo fileURL: URL,
+                   from connections: [AVCaptureConnection]) {
+        print("Started recording to: \(fileURL)")
     }
 } 

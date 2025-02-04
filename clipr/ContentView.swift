@@ -37,67 +37,90 @@ struct AuthView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     let appwrite = Appwrite()
-
+    
     var body: some View {
-        VStack {
-            TextField(
-                "Email",
-                text: $viewModel.email
+        ZStack {
+            // Background gradient for a modern look.
+            LinearGradient(
+                gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .autocapitalization(.none)
+            .edgesIgnoringSafeArea(.all)
             
-            SecureField(
-                "Password",
-                text: $viewModel.password
-            )
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            
-            Button(action: {
-                Task {
-                    do {
-                        try await appwrite.onRegister(
-                            viewModel.email,
-                            viewModel.password
-                        )
-                        await navigationState.checkAuthStatus()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                        showError = true
-                    }
-                }
-            }) {
-                Text("Register")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
+            VStack(spacing: 20) {
+                // App title
+                Text("Clipr")
+                    .font(.system(size: 48, weight: .bold))
                     .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
-            
-            Button(action: {
-                Task {
-                    do {
-                        try await appwrite.onLogin(
-                            viewModel.email,
-                            viewModel.password
-                        )
-                        await navigationState.checkAuthStatus()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                        showError = true
-                    }
-                }
-            }) {
-                Text("Login")
-                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 40)
+                
+                // Email input
+                TextField("Email", text: $viewModel.email)
+                    .keyboardType(.emailAddress)
+                    .autocapitalization(.none)
                     .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .background(Color.white.opacity(0.9))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 20)
+                    .foregroundColor(.black)
+                
+                // Password input
+                SecureField("Password", text: $viewModel.password)
+                    .padding()
+                    .background(Color.white.opacity(0.9))
+                    .cornerRadius(10)
+                    .padding(.horizontal, 20)
+                    .foregroundColor(.black)
+                
+                // Register button
+                Button(action: {
+                    Task {
+                        do {
+                            try await appwrite.onRegister(viewModel.email, viewModel.password)
+                            await navigationState.checkAuthStatus()
+                        } catch {
+                            errorMessage = error.localizedDescription
+                            showError = true
+                        }
+                    }
+                }) {
+                    Text("Register")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                        .padding(.horizontal, 20)
+                }
+                
+                // Login button
+                Button(action: {
+                    Task {
+                        do {
+                            try await appwrite.onLogin(viewModel.email, viewModel.password)
+                            await navigationState.checkAuthStatus()
+                        } catch {
+                            errorMessage = error.localizedDescription
+                            showError = true
+                        }
+                    }
+                }) {
+                    Text("Login")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.green)
+                        .cornerRadius(10)
+                        .padding(.horizontal, 20)
+                }
+                
+                Spacer()
             }
+            .padding(.top, 80)
         }
-        .padding()
         .alert("Error", isPresented: $showError) {
             Button("OK") { }
         } message: {
