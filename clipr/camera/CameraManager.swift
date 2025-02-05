@@ -223,18 +223,9 @@ class CameraManager: NSObject, ObservableObject {
     
     // MARK: - Recording Methods
     
-    func startRecording() {
-        guard !isRecording else { return }
-        isRecording = true
-        recordingStartTime = Date()
+    private func startFirstHalfRecordingSegment() {
         isRecordingFirstHalf = true
-        
-        // Reset progress tracking for first segment.
-        self.isSecondSegment = false
-        self.topBarProgress = 0.0
-        self.recordButtonProgress = 0.0
-        self.countdown = 0
-        self.shouldShowCountdown = false
+        recordingStartTime = Date()
         
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "recording_part1_\(Date().timeIntervalSince1970).mov"
@@ -242,23 +233,20 @@ class CameraManager: NSObject, ObservableObject {
         
         movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
         
-        // Timer for first segment (expanding white bar & circular progress fills from 0 to 0.5)
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        // Timer for first segment (progress from 0 to 0.5)
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self = self,
                   let startTime = self.recordingStartTime else { return }
             let elapsed = Date().timeIntervalSince(startTime)
             DispatchQueue.main.async {
-                self.topBarProgress = min(1.0, elapsed / self.flipCameraTime)
                 self.recordButtonProgress = (elapsed / self.flipCameraTime) * 0.5
-                if elapsed < self.flipCameraTime {
-                    let timeLeft = self.flipCameraTime - elapsed
-                    if timeLeft <= 3 {
-                        self.countdown = Int(ceil(timeLeft))
-                        self.shouldShowCountdown = timeLeft > 0.1
-                    }
+                let remaining = self.flipCameraTime - elapsed
+                if remaining <= 3 {
+                    self.countdown = Int(ceil(remaining))
+                    self.shouldShowCountdown = remaining > 0.1
                 }
                 if elapsed >= self.flipCameraTime {
-                    self.recordingTimer?.invalidate()
+                    timer.invalidate()
                     self.recordingTimer = nil
                     self.movieOutput?.stopRecording()
                 }
@@ -268,9 +256,6 @@ class CameraManager: NSObject, ObservableObject {
     
     private func startSecondHalfRecordingSegment() {
         isRecordingFirstHalf = false
-        self.isSecondSegment = true
-        self.topBarProgress = 1.0  // Start with full white bar.
-        self.recordButtonProgress = 0.5
         recordingStartTime = Date()
         
         let tempDir = FileManager.default.temporaryDirectory
@@ -279,14 +264,13 @@ class CameraManager: NSObject, ObservableObject {
         
         movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
         
-        // Timer for second segment (white bar shrinks; record button fills from 0.5 to 1.0)
+        // Timer for second segment (progress from 0.5 to 1.0)
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self = self,
                   let startTime = self.recordingStartTime else { return }
             let elapsed = Date().timeIntervalSince(startTime)
             DispatchQueue.main.async {
                 let segmentDuration = self.totalRecordingDuration - self.flipCameraTime
-                self.topBarProgress = max(0.0, 1.0 - (elapsed / segmentDuration))
                 self.recordButtonProgress = min(1.0, 0.5 + (elapsed / segmentDuration) * 0.5)
                 let remaining = segmentDuration - elapsed
                 if remaining <= 3 {
@@ -300,6 +284,12 @@ class CameraManager: NSObject, ObservableObject {
                 }
             }
         }
+    }
+    
+    func startRecording() {
+        guard !isRecording else { return }
+        isRecording = true
+        startFirstHalfRecordingSegment()
     }
     
     // MARK: - Video Saving & Combining (unchanged)
@@ -329,6 +319,9 @@ class CameraManager: NSObject, ObservableObject {
     }
     
     private func combineVideos(firstHalfURL: URL, secondHalfURL: URL) async {
+        let startTime = Date()
+        print("🔄 Video combination started at: \(startTime)")
+        
         let composition = AVMutableComposition()
         guard let videoTrack = composition.addMutableTrack(
             withMediaType: .video,
@@ -400,13 +393,18 @@ class CameraManager: NSObject, ObservableObject {
             await exportSession.export()
             
             if exportSession.status == .completed {
+                let endTime = Date()
+                let duration = endTime.timeIntervalSince(startTime)
+                print("✅ Video combination completed at: \(endTime)")
+                print("⏱️ Total combination duration: \(duration) seconds")
+                
                 DispatchQueue.main.async {
                     self.lastRecordedVideoURL = outputURL
                     self.showingPreview = true
                 }
                 saveVideoToPhotoLibrary(fileURL: outputURL)
             } else if let error = exportSession.error {
-                print("Export failed: \(error)")
+                print("❌ Export failed: \(error)")
             }
             
         } catch {
@@ -414,14 +412,29 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    func sendVideo() async {
+    func sendVideo(progressCallback: @escaping (Double) -> Void) async {
         guard let videoURL = lastRecordedVideoURL else { return }
+        let startTime = Date()
+        print("📤 Starting video upload process at: \(startTime)")
         do {
+            print("🔄 Converting MOV to MP4...")
+            progressCallback(0.1) // Started conversion
             let mp4URL = try await convertMovToMp4(inputURL: videoURL)
+            print("✅ MOV to MP4 conversion completed at: \(Date())")
+            
+            progressCallback(0.3) // Conversion complete
+            
+            print("📤 Uploading to Appwrite...")
             let fileId = try await AppwriteManager.shared.uploadVideo(fileURL: mp4URL)
-            print("Video uploaded successfully with ID: \(fileId)")
+            let endTime = Date()
+            let duration = endTime.timeIntervalSince(startTime)
+            print("✅ Video upload completed at: \(endTime)")
+            print("⏱️ Total upload duration: \(duration) seconds")
+            print("🆔 Video uploaded with ID: \(fileId)")
+            
+            progressCallback(1.0) // Upload complete
         } catch {
-            print("Error uploading video: \(error)")
+            print("❌ Error uploading video: \(error)")
         }
     }
 }
@@ -499,21 +512,27 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
                    didFinishRecordingTo outputFileURL: URL,
                    from connections: [AVCaptureConnection],
                    error: Error?) {
+        let recordingEndTime = Date()
+        print("📹 Recording finished at: \(recordingEndTime)")
+        
         if let error = error {
-            print("Error recording video: \(error)")
+            print("❌ Error recording video: \(error)")
             return
         }
         
         if isRecordingFirstHalf {
+            print("📹 First half recording complete")
             firstHalfURL = outputFileURL
             toggleCamera()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.startSecondHalfRecordingSegment()
             }
         } else {
+            print("📹 Second half recording complete")
             secondHalfURL = outputFileURL
             if let firstHalfURL = firstHalfURL,
                let secondHalfURL = secondHalfURL {
+                print("🔄 Starting video combination at: \(Date())")
                 Task {
                     await combineVideos(firstHalfURL: firstHalfURL,
                                       secondHalfURL: secondHalfURL)

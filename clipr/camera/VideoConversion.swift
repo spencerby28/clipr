@@ -6,6 +6,10 @@ import AVFoundation
 /// - Returns: A URL pointing to the converted MP4 file.
 /// - Throws: An error if the export fails.
 func convertMovToMp4(inputURL: URL) async throws -> URL {
+    let startTime = Date()
+    print("🎬 Starting MOV to MP4 conversion at: \(startTime)")
+    print("📊 Input file size: \(try FileManager.default.attributesOfItem(atPath: inputURL.path)[.size] ?? 0) bytes")
+    
     let asset = AVAsset(url: inputURL)
     
     // Create an export session with a high-quality preset.
@@ -17,6 +21,7 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
         )
     }
     
+    print("⚙️ Setting up video composition...")
     // Set up video composition for resizing
     let composition = AVMutableVideoComposition()
     composition.renderSize = CGSize(width: 576, height: 1024)
@@ -55,9 +60,17 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
     exportSession.videoComposition = composition
     
     try await withCheckedThrowingContinuation { continuation in
+        print("🔄 Starting export process...")
         exportSession.exportAsynchronously {
             switch exportSession.status {
             case .completed:
+                let endTime = Date()
+                let duration = endTime.timeIntervalSince(startTime)
+                print("✅ MP4 conversion completed at: \(endTime)")
+                print("⏱️ Conversion duration: \(duration) seconds")
+                if let outputURL = exportSession.outputURL {
+                    print("📊 Output file size: \(try? FileManager.default.attributesOfItem(atPath: outputURL.path)[.size] ?? 0) bytes")
+                }
                 continuation.resume(returning: ())
                 
             case .failed:
@@ -66,6 +79,7 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
                     code: -2,
                     userInfo: [NSLocalizedDescriptionKey: "Unknown export error."]
                 )
+                print("❌ Export failed: \(error)")
                 continuation.resume(throwing: error)
                 
             case .cancelled:
@@ -74,6 +88,7 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
                     code: -3,
                     userInfo: [NSLocalizedDescriptionKey: "Export cancelled."]
                 )
+                print("⚠️ Export cancelled")
                 continuation.resume(throwing: error)
                 
             default:

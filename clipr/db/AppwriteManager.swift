@@ -9,7 +9,8 @@ class AppwriteManager: ObservableObject {
     static let bucketId = "clips"
     static let avatarsBucketId = "avatars"
     static let usersCollectionId = "users"
-    static let databaseId = "users"
+    static let videosCollectionId = "clips"
+    static let databaseId = "clips"
     
     public let appwrite: Appwrite
     private var usernameCheckCancellable: AnyCancellable?
@@ -18,27 +19,6 @@ class AppwriteManager: ObservableObject {
     @Published var isCheckingUsername = false
     @Published var currentUser: UserProfile?
     
-    struct UserProfile: Codable {
-        let id: String
-        let collectionId: String
-        let databaseId: String
-        let createdAt: String
-        let updatedAt: String
-        let permissions: [String]
-        
-        // User specific fields
-        let userId: String?
-        let username: String?
-        let name: String?
-        let phone: String?
-        let avatarId: String?
-        let email: String?
-        
-        enum CodingKeys: String, CodingKey {
-            case id, collectionId, databaseId, createdAt, updatedAt, permissions
-            case userId, username, name, phone, avatarId, email
-        }
-    }
     
     private init() {
         self.appwrite = Appwrite()
@@ -124,8 +104,7 @@ class AppwriteManager: ObservableObject {
             "name": name,
             "email": email ?? "",
             "phone": phoneNumber,
-            "avatarId": avatarId,
-            "createdAt": Date().ISO8601Format()
+            "avatarId": avatarId
         ]
         
         // Create the document with username as ID for easy lookup
@@ -252,12 +231,33 @@ class AppwriteManager: ObservableObject {
     // MARK: - Video Methods
         
     /// Uploads a video using a file URL.
-    func uploadVideo(fileURL: URL) async throws -> String {
+    func uploadVideo(fileURL: URL, caption: String? = nil) async throws -> String {
         let fileData = try Data(contentsOf: fileURL)
         let fileName = fileURL.lastPathComponent
         
+        // 1. Upload the video file first
         let file = try await appwrite.uploadVideo(fileData: fileData, fileName: fileName)
-        return file.id
+        
+        print(currentUser)
+        
+        // 2. Create the video document in the database
+        let videoData: [String: Any] = [
+            "videoId": file.id,
+            "caption": caption ?? "",
+            "likes": [],
+            "comments": [],
+            "users": currentUser?.username
+        ]
+        
+        // Create the document
+        let document = try await appwrite.databases.createDocument(
+            databaseId: AppwriteManager.databaseId,
+            collectionId: AppwriteManager.videosCollectionId,
+            documentId: ID.unique(),
+            data: videoData
+        )
+        
+        return document.id
     }
     
     /// Returns a public URL for the uploaded video.
@@ -274,6 +274,106 @@ class AppwriteManager: ObservableObject {
             return files.files
         } catch {
             print("Error listing videos: \(error)")
+            throw error
+        }
+    }
+    
+    /// Lists all videos with their metadata, sorted by creation date (newest first)
+    func listVideosWithMetadata(limit: Int = 25) async throws -> [Video] {
+        do {
+            let documents = try await appwrite.databases.listDocuments(
+                databaseId: AppwriteManager.databaseId,
+                collectionId: AppwriteManager.videosCollectionId,
+                queries: [
+                    Query.orderDesc("$createdAt"),
+                    Query.limit(limit)
+                ]
+            )
+            
+            return try documents.documents.compactMap { document in
+                // Create a dictionary with all the document metadata and data
+                var documentDict: [String: Any] = [
+                    "id": document.id,
+                    "collectionId": document.collectionId,
+                    "databaseId": document.databaseId,
+                    "createdAt": document.createdAt,
+                    "updatedAt": document.updatedAt,
+                    "permissions": document.permissions
+                ]
+                
+                // Add video-specific fields
+                if let videoId = document.data["videoId"]?.value as? String {
+                    documentDict["videoId"] = videoId
+                }
+                if let caption = document.data["caption"]?.value as? String {
+                    documentDict["caption"] = caption
+                }
+                if let likes = document.data["likes"]?.value as? [[String: Any]] {
+                    documentDict["likes"] = likes
+                }
+                if let comments = document.data["comments"]?.value as? [[String: Any]] {
+                    documentDict["comments"] = comments
+                }
+                if let username = document.data["users"]?.value as? String {
+                    documentDict["users"] = username
+                }
+                
+                let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
+                return try JSONDecoder().decode(Video.self, from: jsonData)
+            }
+        } catch {
+            print("Error listing videos with metadata: \(error)")
+            throw error
+        }
+    }
+    
+    /// Fetches video metadata from the database using the storage file ID
+    func fetchVideoMetadata(videoId: String) async throws -> Video? {
+        do {
+            let documents = try await appwrite.databases.listDocuments(
+                databaseId: AppwriteManager.databaseId,
+                collectionId: AppwriteManager.videosCollectionId,
+                queries: [
+                    Query.equal("videoId", value: videoId),
+                    Query.orderDesc("$createdAt")
+                ]
+            )
+            
+            guard let document = documents.documents.first else {
+                return nil
+            }
+            
+            // Create a dictionary with all the document metadata and data
+            var documentDict: [String: Any] = [
+                "id": document.id,
+                "collectionId": document.collectionId,
+                "databaseId": document.databaseId,
+                "createdAt": document.createdAt,
+                "updatedAt": document.updatedAt,
+                "permissions": document.permissions
+            ]
+            
+            // Add video-specific fields
+            if let videoId = document.data["videoId"]?.value as? String {
+                documentDict["videoId"] = videoId
+            }
+            if let caption = document.data["caption"]?.value as? String {
+                documentDict["caption"] = caption
+            }
+            if let likes = document.data["likes"]?.value as? [[String: Any]] {
+                documentDict["likes"] = likes
+            }
+            if let comments = document.data["comments"]?.value as? [[String: Any]] {
+                documentDict["comments"] = comments
+            }
+            if let username = document.data["users"]?.value as? String {
+                documentDict["users"] = username
+            }
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
+            return try JSONDecoder().decode(Video.self, from: jsonData)
+        } catch {
+            print("Error fetching video metadata: \(error)")
             throw error
         }
     }

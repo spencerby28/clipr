@@ -326,8 +326,21 @@ struct OnboardingPhoneAuthView: View {
             do {
                 try await AppwriteManager.shared.onPhoneLogin(userId: userId, secret: secret)
                 print("✅ Appwrite session created successfully")
-                await MainActor.run {
-                    onVerificationComplete?()
+                
+                // Try to load the current user profile
+                do {
+                    try await AppwriteManager.shared.loadCurrentUser()
+                    // If we get here, user profile exists - skip onboarding
+                    await MainActor.run {
+                        navigationState.isLoggedIn = true
+                        navigationState.hasSeenOnboarding = true
+                        dismiss()
+                    }
+                } catch {
+                    // No user profile exists - continue with onboarding
+                    await MainActor.run {
+                        onVerificationComplete?()
+                    }
                 }
             } catch {
                 await MainActor.run {

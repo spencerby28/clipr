@@ -103,7 +103,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingShareSheet) {
             if let user = appwrite.currentUser {
-                ShareSheet(activityItems: ["Join me on Clipr! https://clipr.sb28.xyz/invite/\(user.username)"])
+                ShareSheet(activityItems: ["Join me on Clipr! https://clipr.sb28.xyz/invite/\(user.username!)"])
             }
         }
         .alert("Error", isPresented: $showError, actions: {

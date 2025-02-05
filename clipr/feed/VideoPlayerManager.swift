@@ -113,4 +113,5 @@ class VideoPlayerManager: NSObject, ObservableObject {
         print("Pausing video")
         player.pause()
     }
-} 
+}
+

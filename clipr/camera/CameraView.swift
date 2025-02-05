@@ -4,6 +4,10 @@ struct CameraView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var cameraManager = CameraManager()
     @State private var currentFrame: CGImage?
+    @State private var isProcessing = false
+    
+    private let cornerRadius: CGFloat = 24
+    private let borderWidth: CGFloat = 3
     
     var body: some View {
         GeometryReader { geometry in
@@ -15,6 +19,7 @@ struct CameraView: View {
                 Color.black.ignoresSafeArea()
                 
                 VStack {
+                    Spacer()
                     // Camera Preview Container
                     ZStack {
                         if let image = currentFrame {
@@ -22,18 +27,50 @@ struct CameraView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                                 .frame(width: viewWidth - 32, height: previewHeight)
-                                .clipShape(RoundedRectangle(cornerRadius: 24))
+                                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+                                .padding(borderWidth/2)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 24)
-                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    ZStack {
+                                        if cameraManager.isRecording {
+                                            RecordingBorder(
+                                                progress: cameraManager.recordButtonProgress,
+                                                cornerRadius: cornerRadius
+                                            )
+                                            .stroke(Color.red, lineWidth: borderWidth)
+                                        } else {
+                                            RoundedRectangle(cornerRadius: cornerRadius)
+                                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                        }
+                                        
+                                        if isProcessing {
+                                            RoundedRectangle(cornerRadius: cornerRadius)
+                                                .fill(
+                                                    LinearGradient(
+                                                        gradient: Gradient(colors: [
+                                                            Color.black.opacity(0.3),
+                                                            Color.black.opacity(0.7)
+                                                        ]),
+                                                        startPoint: .top,
+                                                        endPoint: .bottom
+                                                    )
+                                                )
+                                                .transition(.opacity)
+                                        }
+                                    }
+                                    .padding(borderWidth/2)
                                 )
+                                .onTapGesture(count: 2) {
+                                    if !cameraManager.isRecording {
+                                        cameraManager.toggleCamera()
+                                    }
+                                }
                         } else {
                             ContentUnavailableView("No camera feed",
-                                                     systemImage: "xmark.circle.fill")
+                                                 systemImage: "xmark.circle.fill")
                                 .frame(width: viewWidth - 32, height: previewHeight)
                         }
                         
-                        // Overlay Controls
+                        // Camera Controls
                         VStack {
                             HStack {
                                 Spacer()
@@ -52,28 +89,25 @@ struct CameraView: View {
                                 }
                             }
                             Spacer()
-                            VStack {
-                                Spacer()
-                                RecordButton(
-                                    isRecording: cameraManager.isRecording,
-                                    progress: cameraManager.recordButtonProgress,
-                                    action: {
-                                        if !cameraManager.isRecording {
-                                            cameraManager.startRecording()
-                                        }
-                                    }
-                                )
-                                .disabled(cameraManager.isRecording)
-                                .padding(.bottom, 30)
+                            
+                            // Record button
+                            if !cameraManager.isRecording {
+                                Button(action: {
+                                    cameraManager.startRecording()
+                                }) {
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 70, height: 70)
+                                }
+                                .padding(.bottom, 40)
                             }
                         }
                     }
                     .padding(.horizontal, 16)
-                    
                     Spacer()
                 }
                 
-                // Top progress bar (white bar)
+                // Top progress bar
                 if cameraManager.isRecording {
                     GeometryReader { metrics in
                         Rectangle()
@@ -98,6 +132,13 @@ struct CameraView: View {
                 },
                 alignment: .topTrailing
             )
+            .onChange(of: cameraManager.isRecording) { _, isRecording in
+                if !isRecording && cameraManager.recordButtonProgress >= 1.0 {
+                    withAnimation {
+                        isProcessing = true
+                    }
+                }
+            }
             .task {
                 // Start camera preview stream.
                 for await image in cameraManager.previewStream {
@@ -134,15 +175,21 @@ struct CameraView: View {
                 VideoPreviewView(
                     videoURL: videoURL,
                     onRetake: {
+                        withAnimation {
+                            isProcessing = false
+                        }
                         cameraManager.showingPreview = false
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             cameraManager.startRecording()
                         }
                     },
-                    onSend: {
+                    onSend: { progressCallback in
                         Task {
-                            await cameraManager.sendVideo()
+                            await cameraManager.sendVideo(progressCallback: progressCallback)
                             cameraManager.showingPreview = false
+                            withAnimation {
+                                isProcessing = false
+                            }
                         }
                     }
                 )

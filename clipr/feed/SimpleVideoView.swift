@@ -6,6 +6,10 @@ struct SimpleVideoView: View {
     let index: Int
     @ObservedObject var videoManager: VideoLoadingManager
     @State private var isPlaying = false
+    @State private var videoMetadata: Video?
+    @State private var isLoadingMetadata = true
+    @State private var creator: UserProfile?
+    @State private var isLoadingCreator = true
     
     var body: some View {
         ZStack {
@@ -21,6 +25,11 @@ struct SimpleVideoView: View {
                             queue: .main) { _ in
                                 player.seek(to: .zero)
                                 player.play()
+                        }
+                        
+                        // Try to fetch video metadata
+                        Task {
+                            await loadVideoMetadata()
                         }
                     }
                     .onDisappear {
@@ -60,6 +69,41 @@ struct SimpleVideoView: View {
                     .padding(.bottom, 40)
                 }
             }
+            
+            // Add metadata overlay
+            if let metadata = videoMetadata {
+                if let user = AppwriteManager.shared.currentUser {
+                    VideoMetadataView(video: metadata, user: user)
+                        .opacity(isPlaying ? 1 : 0.7)
+                        .animation(.easeInOut, value: isPlaying)
+                } else {
+                    // Show basic metadata without user info
+                    VStack(alignment: .leading) {
+                        Spacer()
+                        if let caption = metadata.caption {
+                            Text(caption)
+                                .foregroundColor(.white)
+                                .padding()
+                        }
+                        HStack {
+                            Text("Likes: \(metadata.likeCount)")
+                            Text("Comments: \(metadata.commentCount)")
+                        }
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.black.opacity(0.5))
+                    }
+                }
+            } else if !isLoadingMetadata {
+                // Show basic video ID if no metadata is available
+                VStack {
+                    Spacer()
+                    Text("Video \(getVideoIdFromURL())")
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.black.opacity(0.5))
+                }
+            }
         }
         .onAppear {
             videoManager.preloadVideosAround(index: index)
@@ -75,6 +119,22 @@ struct SimpleVideoView: View {
             }
         }
         .statusBar(hidden: true)
+    }
+    
+    private func getVideoIdFromURL() -> String {
+        let components = url.absoluteString.components(separatedBy: "/")
+        return components.last ?? "unknown"
+    }
+    
+    private func loadVideoMetadata() async {
+        isLoadingMetadata = true
+        do {
+            let videoId = getVideoIdFromURL()
+            videoMetadata = try await AppwriteManager.shared.fetchVideoMetadata(videoId: videoId)
+        } catch {
+            print("Error loading video metadata: \(error)")
+        }
+        isLoadingMetadata = false
     }
 }
 
