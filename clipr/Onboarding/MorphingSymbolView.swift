@@ -64,7 +64,7 @@ struct MorphingSymbolView: View {
         var radius: CGFloat
         var foregroundColor: Color
         var keyFrameDuration: CGFloat = 0.4
-        var symbolAnimation: Animation = .smooth(duration: 0.5, extraBounce: 0)
+        var symbolAnimation: Animation = .smooth(duration: 0.3, extraBounce: 0)
     }
 }
 

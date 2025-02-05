@@ -1,10 +1,14 @@
 import SwiftUI
+import AppwriteModels
+import JSONCodable
 
 struct ProfileView: View {
     @EnvironmentObject var navigationState: NavigationState
-    @StateObject private var cameraManager = CameraManager()
     @State private var username: String = "Username"
     @State private var showingShareSheet = false
+    @State private var userDetails: User<[String: AnyCodable]>?
+    @State private var errorMessage: String?
+    @State private var showError = false
     
     var body: some View {
         VStack(spacing: 24) {
@@ -73,10 +77,25 @@ struct ProfileView: View {
             .padding()
         }
         .sheet(isPresented: $showingShareSheet) {
-            ShareSheet(activityItems: ["Join me on the app! https://yourapp.com/invite"])
+            if let user = userDetails {
+                ShareSheet(activityItems: ["Join me on the app! https://yourapp.com/invite/\(user.id)"])
+            } else {
+                ShareSheet(activityItems: ["Join me on the app! https://yourapp.com/invite"])
+            }
         }
+        .alert("Error", isPresented: $showError, actions: {
+            Button("OK", role: .cancel) {}
+        }, message: {
+            Text(errorMessage ?? "Unknown error occurred")
+        })
         .onAppear {
-            cameraManager.loadSavedVideos()
+            Task {
+                do {
+                    _ = try await AppwriteManager.shared.getAccount()
+                } catch {
+                    print("❌ Profile - Error loading initial user details: \(error)")
+                }
+            }
         }
     }
 }

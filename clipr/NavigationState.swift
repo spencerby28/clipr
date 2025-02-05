@@ -4,6 +4,7 @@ class NavigationState: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var selectedTab: Tab = .feed
     @Published var isCheckingAuth: Bool = true
+    @Published var hasSeenOnboarding: Bool = false
     private let appwrite = Appwrite()
     
     enum Tab {
@@ -33,5 +34,9 @@ class NavigationState: ObservableObject {
         } catch {
             print("Logout error: \(error)")
         }
+    }
+    
+    func completeOnboarding() {
+        hasSeenOnboarding = true
     }
 } 

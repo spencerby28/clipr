@@ -70,6 +70,7 @@ class Appwrite {
             throw error
         }
     }
+
     
     public func onLogout() async throws {
         do {
@@ -79,7 +80,47 @@ class Appwrite {
             throw error
         }
     }
-    
+    public func onPhoneLogin(
+        _ userId: String,
+        _ secret: String
+    ) async throws -> Session {
+        print("📱 Attempting phone login - User ID: \(userId)")
+        print("🔑 Raw secret: \(secret)")
+        do {
+            // Decode base64 secret
+            print("🔑 Decoding base64 secret...")
+            guard let decodedData = Data(base64Encoded: secret),
+                  let decodedSecret = String(data: decodedData, encoding: .utf8) else {
+                print("❌ Failed to decode base64 secret")
+                throw NSError(domain: "AppwriteError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to decode base64 secret"])
+            }
+            print("✅ Successfully decoded secret")
+            print("🔑 Decoded secret: \(decodedSecret)")
+            
+            // Parse the JSON string to extract secret
+            let decoder = JSONDecoder()
+            guard let jsonData = decodedSecret.data(using: .utf8),
+                  let secretResponse = try? decoder.decode(SecretResponse.self, from: jsonData) else {
+                print("❌ Failed to parse secret JSON")
+                throw NSError(domain: "AppwriteError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse secret JSON"])
+            }
+            
+            print("🔐 Creating session...")
+            let session = try await account.createSession(
+                userId: userId,
+                secret: secretResponse.secret
+            )
+            print("✅ Session created successfully")
+            return session
+        } catch {
+            print("❌ Phone login error: \(error)")
+            throw error
+        }
+    }
+    private struct SecretResponse: Codable {
+        let id: String
+        let secret: String
+    }
     // Add video storage methods
     public func uploadVideo(fileData: Data, fileName: String) async throws -> File {
         do {
@@ -96,6 +137,7 @@ class Appwrite {
             throw error
         }
     }
+
     
 public func getFileViewURL(bucketId: String, fileId: String) -> URL? {
         let endpoint = "https://appwrite.sb28.xyz/v1"

@@ -1,12 +1,13 @@
 import Foundation
 import SwiftUI
 import Appwrite
+import JSONCodable
 
 class AppwriteManager: ObservableObject {
     static let shared = AppwriteManager()
     static let bucketId = "clips"
     
-    private let appwrite: Appwrite
+    public let appwrite: Appwrite
     
     @Published var isAuthenticated = false
     
@@ -49,6 +50,49 @@ class AppwriteManager: ObservableObject {
     
     // MARK: - Authentication Methods
     
+    /// Gets the current user's account details
+    func getAccount() async throws -> User<[String: AnyCodable]> {
+        print("🔍 Checking authentication status...")
+        guard isAuthenticated else {
+            print("❌ Not authenticated")
+            throw NSError(domain: "AppwriteError", code: -1, 
+                userInfo: [NSLocalizedDescriptionKey: "User is not authenticated"])
+        }
+        
+        print("✅ Authentication check passed")
+        
+        do {
+            // Double check session
+            let sessions = try await appwrite.account.listSessions()
+            guard !sessions.sessions.isEmpty else {
+                print("❌ No active sessions found")
+                await MainActor.run {
+                    self.isAuthenticated = false
+                }
+                throw NSError(domain: "AppwriteError", code: -1, 
+                    userInfo: [NSLocalizedDescriptionKey: "No active session"])
+            }
+            
+            print("📡 Fetching account details...")
+            let user = try await appwrite.account.get()
+            print("🔍 Raw account: \(user)")
+            
+            return user
+        } catch let error as AppwriteError {
+            print("❌ Appwrite error: \(String(describing: error.type)) - \(error.message)")
+            if error.code == 401 {
+                await MainActor.run {
+                    self.isAuthenticated = false
+                }
+            }
+            throw error
+        } catch {
+            print("❌ Unexpected error: \(error)")
+            print("Error type: \(type(of: error))")
+            print("Full error details: \(String(describing: error))")
+            throw error
+        }
+    }
     /// Logs in using email and password.
     func login(email: String, password: String) async throws {
         do {
@@ -71,6 +115,18 @@ class AppwriteManager: ObservableObject {
             }
         } catch {
             print("Logout error: \(error)")
+            throw error
+        }
+    }
+
+    func onPhoneLogin(userId: String, secret: String) async throws {
+        do {
+            _ = try await appwrite.onPhoneLogin(userId, secret)
+            await MainActor.run {
+                self.isAuthenticated = true
+            }
+        } catch {
+            print("Phone login error: \(error)")
             throw error
         }
     }
