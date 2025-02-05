@@ -15,6 +15,7 @@ class Appwrite {
     var databases: Databases
     var storage: Storage
     
+    
     public init() {
         self.client = Client()
             .setEndpoint("https://appwrite.sb28.xyz/v1")

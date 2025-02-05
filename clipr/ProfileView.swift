@@ -4,9 +4,8 @@ import JSONCodable
 
 struct ProfileView: View {
     @EnvironmentObject var navigationState: NavigationState
-    @State private var username: String = "Username"
+    @StateObject private var appwrite = AppwriteManager.shared
     @State private var showingShareSheet = false
-    @State private var userDetails: User<[String: AnyCodable]>?
     @State private var errorMessage: String?
     @State private var showError = false
     
@@ -14,15 +13,41 @@ struct ProfileView: View {
         VStack(spacing: 24) {
             // Profile Header
             VStack(spacing: 16) {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.gray)
-                
-                TextField("Username", text: $username)
-                    .font(.title2)
-                    .multilineTextAlignment(.center)
+                if let user = appwrite.currentUser {
+                    if let avatarId = user.avatarId,
+                       let avatarURL = appwrite.getAvatarURL(avatarId: avatarId) {
+                        AsyncImage(url: avatarURL) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                                .shadow(radius: 2)
+                        } placeholder: {
+                            ProgressView()
+                                .frame(width: 100, height: 100)
+                        }
+                    } else {
+                        Image(systemName: "person.circle.fill")
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Text(user.name ?? "No Name")
+                        .font(.title2)
+                        .bold()
+                    
+                    if let username = user.username {
+                        Text("@\(username)")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    ProgressView()
+                        .frame(width: 100, height: 100)
+                }
             }
             .padding(.top, 32)
             
@@ -77,10 +102,8 @@ struct ProfileView: View {
             .padding()
         }
         .sheet(isPresented: $showingShareSheet) {
-            if let user = userDetails {
-                ShareSheet(activityItems: ["Join me on the app! https://yourapp.com/invite/\(user.id)"])
-            } else {
-                ShareSheet(activityItems: ["Join me on the app! https://yourapp.com/invite"])
+            if let user = appwrite.currentUser {
+                ShareSheet(activityItems: ["Join me on Clipr! https://clipr.sb28.xyz/invite/\(user.username)"])
             }
         }
         .alert("Error", isPresented: $showError, actions: {
@@ -91,9 +114,10 @@ struct ProfileView: View {
         .onAppear {
             Task {
                 do {
-                    _ = try await AppwriteManager.shared.getAccount()
+                    try await appwrite.loadCurrentUser()
                 } catch {
-                    print("❌ Profile - Error loading initial user details: \(error)")
+                    errorMessage = error.localizedDescription
+                    showError = true
                 }
             }
         }

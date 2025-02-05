@@ -327,9 +327,7 @@ struct OnboardingPhoneAuthView: View {
                 try await AppwriteManager.shared.onPhoneLogin(userId: userId, secret: secret)
                 print("✅ Appwrite session created successfully")
                 await MainActor.run {
-                    navigationState.isLoggedIn = true
-                    navigationState.hasSeenOnboarding = true
-                    dismiss()
+                    onVerificationComplete?()
                 }
             } catch {
                 await MainActor.run {
