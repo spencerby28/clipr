@@ -49,6 +49,12 @@ class VideoLoadingManager: ObservableObject {
         return loadedVideos[index]
     }
     
+    func pauseAllExcept(index: Int) {
+        for (playerIndex, player) in loadedVideos where playerIndex != index {
+            player.pause()
+        }
+    }
+    
     deinit {
         cancellables.removeAll()
     }

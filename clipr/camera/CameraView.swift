@@ -8,11 +8,11 @@ struct CameraView: View {
     var body: some View {
         GeometryReader { geometry in
             let viewWidth = geometry.size.width
-            // Calculate height based on 16:9 aspect ratio
+            // Calculate height using a 16:9 aspect ratio.
             let previewHeight = viewWidth * (16.0/9.0)
             
             ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
+                Color.black.ignoresSafeArea()
                 
                 VStack {
                     // Camera Preview Container
@@ -28,8 +28,8 @@ struct CameraView: View {
                                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                                 )
                         } else {
-                            ContentUnavailableView("No camera feed", 
-                                                 systemImage: "xmark.circle.fill")
+                            ContentUnavailableView("No camera feed",
+                                                     systemImage: "xmark.circle.fill")
                                 .frame(width: viewWidth - 32, height: previewHeight)
                         }
                         
@@ -37,7 +37,6 @@ struct CameraView: View {
                         VStack {
                             HStack {
                                 Spacer()
-                                // Only show camera toggle when not recording
                                 if !cameraManager.isRecording {
                                     Button(action: {
                                         cameraManager.toggleCamera()
@@ -52,23 +51,19 @@ struct CameraView: View {
                                     .padding(16)
                                 }
                             }
-                            
                             Spacer()
-                            
-                            // Record Button
                             VStack {
                                 Spacer()
                                 RecordButton(
                                     isRecording: cameraManager.isRecording,
-                                    progress: cameraManager.recordingProgress,
+                                    progress: cameraManager.recordButtonProgress,
                                     action: {
                                         if !cameraManager.isRecording {
                                             cameraManager.startRecording()
                                         }
-                                        // Remove stop recording action since it's handled automatically
                                     }
                                 )
-                                .disabled(cameraManager.isRecording) // Disable during recording
+                                .disabled(cameraManager.isRecording)
                                 .padding(.bottom, 30)
                             }
                         }
@@ -78,34 +73,38 @@ struct CameraView: View {
                     Spacer()
                 }
                 
-                // Countdown overlay
-                if cameraManager.shouldShowCountdown {
-                    Text("\(cameraManager.countdown)")
-                        .font(.system(size: 120, weight: .bold))
-                        .foregroundColor(.white)
-                        .shadow(radius: 10)
-                        .transition(.scale.combined(with: .opacity))
-                        .animation(.easeInOut, value: cameraManager.countdown)
-                }
-                
-                // Optional: Add a progress indicator at the top
-                GeometryReader { metrics in
-                    if cameraManager.isRecording {
+                // Top progress bar (white bar)
+                if cameraManager.isRecording {
+                    GeometryReader { metrics in
                         Rectangle()
                             .fill(Color.white)
-                            .frame(width: metrics.size.width * CGFloat(cameraManager.recordingProgress),
-                                   height: 4)
+                            .frame(width: metrics.size.width * cameraManager.topBarProgress, height: 4)
                             .position(x: metrics.size.width/2, y: 2)
                     }
                 }
             }
+            // Countdown overlay moved to top right with a smaller font.
+            .overlay(
+                Group {
+                    if cameraManager.shouldShowCountdown {
+                        Text("\(cameraManager.countdown)")
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.top, 16)
+                            .padding(.trailing, 16)
+                            .transition(.scale.combined(with: .opacity))
+                            .animation(.easeInOut, value: cameraManager.countdown)
+                    }
+                },
+                alignment: .topTrailing
+            )
             .task {
-                // Start camera preview stream
+                // Start camera preview stream.
                 for await image in cameraManager.previewStream {
                     currentFrame = image
                 }
             }
-            .onChange(of: scenePhase) { oldPhase, newPhase in
+            .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .active:
                     print("Scene became active")
@@ -121,10 +120,6 @@ struct CameraView: View {
             }
             .onAppear {
                 print("CameraView appeared")
-                print("Screen dimensions:")
-                print("- Width: \(viewWidth)")
-                print("- Preview height: \(previewHeight)")
-                print("- Aspect ratio: \(viewWidth/previewHeight)")
                 cameraManager.startSession()
             }
             .onDisappear {
@@ -140,7 +135,6 @@ struct CameraView: View {
                     videoURL: videoURL,
                     onRetake: {
                         cameraManager.showingPreview = false
-                        // Delay to allow the dismissal animation, then restart recording.
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             cameraManager.startRecording()
                         }
@@ -157,9 +151,8 @@ struct CameraView: View {
     }
 }
 
-// Preview provider
 struct CameraView_Previews: PreviewProvider {
     static var previews: some View {
         CameraView()
     }
-} 
+}

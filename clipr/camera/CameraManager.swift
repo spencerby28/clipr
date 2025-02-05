@@ -4,6 +4,7 @@ import CoreImage
 import Photos
 
 class CameraManager: NSObject, ObservableObject {
+    // MARK: - Capture Session & Related Properties
     private let captureSession = AVCaptureSession()
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
@@ -31,11 +32,18 @@ class CameraManager: NSObject, ObservableObject {
     private var currentPosition: AVCaptureDevice.Position = .front
     
     @Published private(set) var isRecording: Bool = false
-    @Published private(set) var recordingProgress: Double = 0
+    @Published private(set) var recordingProgress: Double = 0  // (legacy use, not used in the new UI)
     @Published private(set) var flipCountdown: Int = 0
     @Published private(set) var countdown: Int = 0
     @Published private(set) var shouldShowCountdown: Bool = false
     
+    // New published properties for our two-part progress UI:
+    // • topBarProgress controls the white progress bar at the top.
+    // • recordButtonProgress is passed to our circular record button.
+    @Published var topBarProgress: CGFloat = 0.0
+    @Published var recordButtonProgress: CGFloat = 0.0
+    @Published var isSecondSegment: Bool = false
+
     private var recordingStartTime: Date?
     private var recordingTimer: Timer?
     private let totalRecordingDuration: TimeInterval = 6.0
@@ -78,21 +86,18 @@ class CameraManager: NSObject, ObservableObject {
     private var isAuthorized: Bool {
         get async {
             let status = AVCaptureDevice.authorizationStatus(for: .video)
-            
-            var isAuthorized = status == .authorized
-            
+            var isAuth = status == .authorized
             if status == .notDetermined {
-                isAuthorized = await AVCaptureDevice.requestAccess(for: .video)
+                isAuth = await AVCaptureDevice.requestAccess(for: .video)
             }
-            
-            return isAuthorized
+            return isAuth
         }
     }
     
     private func configureSession() async {
         guard await isAuthorized else { return }
         
-        // Add audio authorization check
+        // Audio authorization check
         let audioStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         let audioAuthorized: Bool
         if audioStatus == .authorized {
@@ -117,14 +122,10 @@ class CameraManager: NSObject, ObservableObject {
         }
         
         captureSession.beginConfiguration()
-        
-        // Set high quality preset
         captureSession.sessionPreset = .high
         
         do {
             try videoDevice.lockForConfiguration()
-            
-            // Configure for 60fps
             let formats = videoDevice.formats
             let targetFormat = formats.first { format in
                 let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
@@ -135,8 +136,6 @@ class CameraManager: NSObject, ObservableObject {
             if let format = targetFormat {
                 videoDevice.activeFormat = format
                 print("Selected format: \(format)")
-                
-                // Set to 60fps
                 let targetFPS = CMTime(value: 1, timescale: 60)
                 videoDevice.activeVideoMinFrameDuration = targetFPS
                 videoDevice.activeVideoMaxFrameDuration = targetFPS
@@ -145,24 +144,18 @@ class CameraManager: NSObject, ObservableObject {
             let dimensions = CMVideoFormatDescriptionGetDimensions(videoDevice.activeFormat.formatDescription)
             print("Camera format: \(dimensions.width)x\(dimensions.height)")
             print("Frame rate: \(videoDevice.activeVideoMinFrameDuration.timescale)")
-            
             videoDevice.unlockForConfiguration()
         } catch {
             print("Error configuring device: \(error)")
         }
         
-        // Remove existing inputs/outputs
         captureSession.inputs.forEach { captureSession.removeInput($0) }
         captureSession.outputs.forEach { captureSession.removeOutput($0) }
         
         let videoOutput = AVCaptureVideoDataOutput()
         videoOutput.setSampleBufferDelegate(self, queue: processingQueue)
         videoOutput.alwaysDiscardsLateVideoFrames = true
-        
-        // Set video output settings for better performance
-        videoOutput.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-        ]
+        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         
         if let connection = videoOutput.connection(with: .video) {
             if connection.isVideoOrientationSupported {
@@ -187,23 +180,18 @@ class CameraManager: NSObject, ObservableObject {
         self.deviceInput = videoDeviceInput
         self.videoOutput = videoOutput
         
-        // Add movie output configuration after existing video output setup
         let movieOutput = AVCaptureMovieFileOutput()
-        
         guard captureSession.canAddOutput(movieOutput) else {
             captureSession.commitConfiguration()
             return
         }
-        
         captureSession.addOutput(movieOutput)
         self.movieOutput = movieOutput
         
-        // Add audio input if available
         if let audioInput = audioDeviceInput,
            captureSession.canAddInput(audioInput) {
             captureSession.addInput(audioInput)
         }
-        
         captureSession.commitConfiguration()
     }
     
@@ -224,7 +212,6 @@ class CameraManager: NSObject, ObservableObject {
     
     func toggleCamera() {
         stopSession()
-        
         sessionQueue.async {
             self.currentPosition = self.currentPosition == .front ? .back : .front
             Task {
@@ -234,29 +221,35 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Recording Methods
+    
     func startRecording() {
         guard !isRecording else { return }
         isRecording = true
         recordingStartTime = Date()
         isRecordingFirstHalf = true
-
-        // Create temporary URL for the first segment.
+        
+        // Reset progress tracking for first segment.
+        self.isSecondSegment = false
+        self.topBarProgress = 0.0
+        self.recordButtonProgress = 0.0
+        self.countdown = 0
+        self.shouldShowCountdown = false
+        
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "recording_part1_\(Date().timeIntervalSince1970).mov"
         let fileURL = tempDir.appendingPathComponent(fileName)
         
-        // Start recording first segment.
         movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
         
-        // Begin a timer to track the first segment's duration.
-        // When flipCameraTime is reached, stop the movie recording.
+        // Timer for first segment (expanding white bar & circular progress fills from 0 to 0.5)
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self,
                   let startTime = self.recordingStartTime else { return }
             let elapsed = Date().timeIntervalSince(startTime)
             DispatchQueue.main.async {
-                self.recordingProgress = elapsed / self.totalRecordingDuration
-                // Optionally update countdown UI.
+                self.topBarProgress = min(1.0, elapsed / self.flipCameraTime)
+                self.recordButtonProgress = (elapsed / self.flipCameraTime) * 0.5
                 if elapsed < self.flipCameraTime {
                     let timeLeft = self.flipCameraTime - elapsed
                     if timeLeft <= 3 {
@@ -264,7 +257,6 @@ class CameraManager: NSObject, ObservableObject {
                         self.shouldShowCountdown = timeLeft > 0.1
                     }
                 }
-                // Stop recording for the first segment at flipCameraTime (5 sec).
                 if elapsed >= self.flipCameraTime {
                     self.recordingTimer?.invalidate()
                     self.recordingTimer = nil
@@ -276,32 +268,32 @@ class CameraManager: NSObject, ObservableObject {
     
     private func startSecondHalfRecordingSegment() {
         isRecordingFirstHalf = false
+        self.isSecondSegment = true
+        self.topBarProgress = 1.0  // Start with full white bar.
+        self.recordButtonProgress = 0.5
+        recordingStartTime = Date()
         
-        // Create temporary URL for the second segment.
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "recording_part2_\(Date().timeIntervalSince1970).mov"
         let fileURL = tempDir.appendingPathComponent(fileName)
         
-        // Start recording the second segment.
         movieOutput?.startRecording(to: fileURL, recordingDelegate: self)
         
-        // Reset timer for the second segment.
-        recordingStartTime = Date()
+        // Timer for second segment (white bar shrinks; record button fills from 0.5 to 1.0)
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self = self,
                   let startTime = self.recordingStartTime else { return }
             let elapsed = Date().timeIntervalSince(startTime)
             DispatchQueue.main.async {
-                // Update countdown for second segment if needed.
-                let timeLeft = (self.totalRecordingDuration - self.flipCameraTime) - elapsed
-                if timeLeft <= 3 {
-                    self.countdown = Int(ceil(timeLeft))
-                    if elapsed >= 2.0 { // e.g. show countdown after 2 sec into segment.
-                        self.shouldShowCountdown = true
-                    }
+                let segmentDuration = self.totalRecordingDuration - self.flipCameraTime
+                self.topBarProgress = max(0.0, 1.0 - (elapsed / segmentDuration))
+                self.recordButtonProgress = min(1.0, 0.5 + (elapsed / segmentDuration) * 0.5)
+                let remaining = segmentDuration - elapsed
+                if remaining <= 3 {
+                    self.countdown = Int(ceil(remaining))
+                    self.shouldShowCountdown = remaining > 0.1
                 }
-                // Stop second recording when its allotted time is reached.
-                if elapsed >= (self.totalRecordingDuration - self.flipCameraTime) {
+                if elapsed >= segmentDuration {
                     timer.invalidate()
                     self.recordingTimer = nil
                     self.movieOutput?.stopRecording()
@@ -310,19 +302,17 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    // Add method to get saved videos
+    // MARK: - Video Saving & Combining (unchanged)
+    
     func loadSavedVideos() {
-        // For now, just expose the saved videoURLs
         DispatchQueue.main.async {
             self.savedVideos = self.videoURLs
         }
     }
     
-    // Helper method to save video to photo library
     private func saveVideoToPhotoLibrary(fileURL: URL) {
         PHPhotoLibrary.requestAuthorization { status in
             guard status == .authorized else { return }
-            
             PHPhotoLibrary.shared().performChanges {
                 PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileURL)
             } completionHandler: { success, error in
@@ -338,11 +328,8 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    // Add method to combine videos
     private func combineVideos(firstHalfURL: URL, secondHalfURL: URL) async {
         let composition = AVMutableComposition()
-        
-        // Create video track
         guard let videoTrack = composition.addMutableTrack(
             withMediaType: .video,
             preferredTrackID: kCMPersistentTrackID_Invalid
@@ -350,53 +337,37 @@ class CameraManager: NSObject, ObservableObject {
             print("Failed to create video track")
             return
         }
-        
-        // Create audio track (optional)
         let audioTrack = composition.addMutableTrack(
             withMediaType: .audio,
             preferredTrackID: kCMPersistentTrackID_Invalid
         )
-        
         do {
-            // Load first half asynchronously
             let firstAsset = AVURLAsset(url: firstHalfURL)
             let firstVideoTrack = try await firstAsset.loadTracks(withMediaType: .video)[0]
             let firstDuration = try await firstAsset.load(.duration)
             let firstRange = CMTimeRange(start: .zero, duration: firstDuration)
-            
-            // Insert video
             try videoTrack.insertTimeRange(firstRange,
                                          of: firstVideoTrack,
                                          at: .zero)
-            
-            // Insert audio if available
             if let audioTrack = audioTrack,
                let firstAudioTrack = try? await firstAsset.loadTracks(withMediaType: .audio).first {
                 try audioTrack.insertTimeRange(firstRange,
                                              of: firstAudioTrack,
                                              at: .zero)
             }
-            
-            // Load second half asynchronously
             let secondAsset = AVURLAsset(url: secondHalfURL)
             let secondVideoTrack = try await secondAsset.loadTracks(withMediaType: .video)[0]
             let secondDuration = try await secondAsset.load(.duration)
             let secondRange = CMTimeRange(start: .zero, duration: secondDuration)
-            
-            // Insert video
             try videoTrack.insertTimeRange(secondRange,
                                          of: secondVideoTrack,
                                          at: firstDuration)
-            
-            // Insert audio if available
             if let audioTrack = audioTrack,
                let secondAudioTrack = try? await secondAsset.loadTracks(withMediaType: .audio).first {
                 try audioTrack.insertTimeRange(secondRange,
                                              of: secondAudioTrack,
                                              at: firstDuration)
             }
-            
-            // Export combined video
             guard let exportSession = AVAssetExportSession(
                 asset: composition,
                 presetName: AVAssetExportPresetHighestQuality
@@ -411,10 +382,6 @@ class CameraManager: NSObject, ObservableObject {
             exportSession.outputURL = outputURL
             exportSession.outputFileType = .mov
             
-            // Create a video composition to rotate the final output by 90° right.
-            //
-            // We use the natural size from the first video track (assuming both segments match)
-            // and set the render size to be swapped (width becomes height and vice-versa).
             let videoComposition = AVMutableVideoComposition()
             videoComposition.frameDuration = CMTime(value: 1, timescale: 60)
             let naturalSize = firstVideoTrack.naturalSize
@@ -422,18 +389,14 @@ class CameraManager: NSObject, ObservableObject {
             
             let instruction = AVMutableVideoCompositionInstruction()
             instruction.timeRange = CMTimeRange(start: .zero, duration: composition.duration)
-            
             let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
-            // Rotate by 90° to the right: translate by naturalSize.height then rotate by π/2.
             let rotationTransform = CGAffineTransform(translationX: naturalSize.height, y: 0)
                 .rotated(by: .pi/2)
             layerInstruction.setTransform(rotationTransform, at: .zero)
-            
             instruction.layerInstructions = [layerInstruction]
             videoComposition.instructions = [instruction]
             exportSession.videoComposition = videoComposition
 
-            // Perform the export asynchronously.
             await exportSession.export()
             
             if exportSession.status == .completed {
@@ -451,14 +414,12 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    // Add method to handle video sending
     func sendVideo() async {
         guard let videoURL = lastRecordedVideoURL else { return }
         do {
             let mp4URL = try await convertMovToMp4(inputURL: videoURL)
             let fileId = try await AppwriteManager.shared.uploadVideo(fileURL: mp4URL)
             print("Video uploaded successfully with ID: \(fileId)")
-            // Handle successful upload (e.g., save to user's posts)
         } catch {
             print("Error uploading video: \(error)")
         }
@@ -471,24 +432,18 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
                       from connection: AVCaptureConnection) {
         let currentTime = CACurrentMediaTime()
         let elapsed = currentTime - lastFrameTime
-        
-        // More permissive frame rate check
         guard elapsed >= (1.0 / (desiredFrameRate * 1.1)) else { return }
         lastFrameTime = currentTime
-        
         guard var currentFrame = sampleBuffer.cgImage else { return }
         
-        // Use strong reference for image processing
         processingQueue.async {
             if let rotatedImage = self.rotateImage(currentFrame, byDegrees: -90) {
                 currentFrame = rotatedImage
-                
                 if self.currentPosition == .front {
                     if let mirroredImage = self.mirrorImage(currentFrame) {
                         currentFrame = mirroredImage
                     }
                 }
-                
                 self.addToPreviewStream?(currentFrame)
             }
         }
@@ -513,9 +468,7 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         context.translateBy(x: contextWidth / 2, y: contextHeight / 2)
         context.rotate(by: radians)
         context.translateBy(x: -contextHeight / 2, y: -contextWidth / 2)
-        
         context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(image.width), height: CGFloat(image.height)))
-        
         return context.makeImage()
     }
     
@@ -537,12 +490,10 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         context.translateBy(x: contextWidth, y: 0)
         context.scaleBy(x: -1, y: 1)
         context.draw(image, in: CGRect(x: 0, y: 0, width: contextWidth, height: contextHeight))
-        
         return context.makeImage()
     }
 }
 
-// Update the delegate methods
 extension CameraManager: AVCaptureFileOutputRecordingDelegate {
     func fileOutput(_ output: AVCaptureFileOutput,
                    didFinishRecordingTo outputFileURL: URL,
@@ -554,23 +505,13 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
         }
         
         if isRecordingFirstHalf {
-            // First segment finished.
             firstHalfURL = outputFileURL
-            
-            // Toggle the camera after the first recording.
             toggleCamera()
-            
-            // After a short delay to allow for session reconfiguration,
-            // start recording the second segment.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.startSecondHalfRecordingSegment()
             }
-            
         } else {
-            // Second segment finished.
             secondHalfURL = outputFileURL
-            
-            // Combine the two segments.
             if let firstHalfURL = firstHalfURL,
                let secondHalfURL = secondHalfURL {
                 Task {
@@ -578,11 +519,10 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
                                       secondHalfURL: secondHalfURL)
                 }
             }
-            
-            // Reset recording state.
             DispatchQueue.main.async {
                 self.isRecording = false
-                self.recordingProgress = 0
+                self.topBarProgress = 0.0
+                self.recordButtonProgress = 0.0
                 self.countdown = 0
                 self.shouldShowCountdown = false
             }
@@ -594,4 +534,4 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
                    from connections: [AVCaptureConnection]) {
         print("Started recording to: \(fileURL)")
     }
-} 
+}

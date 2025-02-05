@@ -20,17 +20,13 @@ class CameraViewModel: ObservableObject {
     func startPreviewStream() {
         print("Starting preview stream")
         stopPreviewStream()
-        
-        // Create new CameraManager if needed
         if cameraManager == nil {
             cameraManager = CameraManager()
         }
-        
         previewTask = Task {
             guard let manager = cameraManager else { return }
             for await image in manager.previewStream {
                 guard !Task.isCancelled else { break }
-                
                 await MainActor.run {
                     self.currentFrame = image
                 }
@@ -50,7 +46,24 @@ class CameraViewModel: ObservableObject {
         cameraManager?.toggleCamera()
     }
     
-    func toggleRecording() {
-        isRecording.toggle()
+    func startRecording() {
+        cameraManager?.startRecording()
+    }
+    
+    // Computed properties to expose CameraManager's state.
+    var topBarProgress: CGFloat {
+        cameraManager?.topBarProgress ?? 0.0
+    }
+    
+    var recordButtonProgress: CGFloat {
+        cameraManager?.recordButtonProgress ?? 0.0
+    }
+    
+    var countdown: Int {
+        cameraManager?.countdown ?? 0
+    }
+    
+    var shouldShowCountdown: Bool {
+        cameraManager?.shouldShowCountdown ?? false
     }
 } 

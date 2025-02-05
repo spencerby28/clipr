@@ -12,6 +12,25 @@ struct SimpleVideoView: View {
             if let player = videoManager.playerFor(index: index) {
                 CustomVideoPlayer(player: player, isPlaying: $isPlaying)
                     .edgesIgnoringSafeArea(.all)
+                    .onAppear {
+                        // Configure player for looping
+                        player.actionAtItemEnd = .none
+                        NotificationCenter.default.addObserver(
+                            forName: .AVPlayerItemDidPlayToEndTime,
+                            object: player.currentItem,
+                            queue: .main) { _ in
+                                player.seek(to: .zero)
+                                player.play()
+                        }
+                    }
+                    .onDisappear {
+                        // Remove observer when view disappears
+                        NotificationCenter.default.removeObserver(
+                            self,
+                            name: .AVPlayerItemDidPlayToEndTime,
+                            object: player.currentItem
+                        )
+                    }
                     .onTapGesture {
                         isPlaying.toggle()
                         if isPlaying {

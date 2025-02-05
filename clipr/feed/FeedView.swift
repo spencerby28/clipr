@@ -5,6 +5,7 @@ import AVKit
 struct FeedView: View {
     @StateObject private var videoManager: VideoLoadingManager
     @StateObject private var viewModel: FeedViewModel
+    @State private var currentIndex: Int? = 0  // Make optional
     
     init() {
         let manager = VideoLoadingManager()
@@ -29,6 +30,13 @@ struct FeedView: View {
                 }
             }
             .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $currentIndex)
+            .onChange(of: currentIndex) { oldValue, newValue in
+                // Pause all videos except the current one
+                if let index = newValue {
+                    videoManager.pauseAllExcept(index: index)
+                }
+            }
             .ignoresSafeArea()
             .statusBar(hidden: true)
             .onAppear {
