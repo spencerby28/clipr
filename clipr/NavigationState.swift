@@ -1,17 +1,16 @@
 import SwiftUI
 
 class NavigationState: ObservableObject {
-    @Published var isLoggedIn: Bool = false
+    enum Tab: Int {
+        case feed, camera, profile
+    }
+    
     @Published var selectedTab: Tab = .feed
+    @Published var isLoggedIn: Bool = false
     @Published var isCheckingAuth: Bool = true
     @Published var hasSeenOnboarding: Bool = false
+    @Published var showTabMenu: Bool = false
     private let appwrite = Appwrite()
-    
-    enum Tab {
-        case feed
-        case camera
-        case profile
-    }
     
     init() {
         Task {
@@ -38,5 +37,17 @@ class NavigationState: ObservableObject {
     
     func completeOnboarding() {
         hasSeenOnboarding = true
+    }
+    
+    func navigateTo(_ tab: Tab) {
+        selectedTab = tab
+    }
+    
+    var tabMenuItems: [(title: String, icon: String, tab: Tab)] {
+        [
+            ("Feed", "play.square.fill", .feed),
+            ("Camera", "camera.fill", .camera),
+            ("Profile", "person.fill", .profile)
+        ]
     }
 } 

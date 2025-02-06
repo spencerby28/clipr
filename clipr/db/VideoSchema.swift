@@ -28,6 +28,22 @@ struct Comment: Codable {
     let comment: String?
 }
 
+// For database operations - minimal data needed for storage
+struct VideoDocument: Codable {
+    let id: String
+    let collectionId: String
+    let databaseId: String
+    let createdAt: String
+    let updatedAt: String
+    let permissions: [String]
+    let caption: String?
+    let likes: [Like]?
+    let comments: [Comment]?
+    let videoId: String?
+    let users: String? // Just store the username string
+}
+
+// For app usage - full user profile included
 struct Video: Codable {
     let id: String
     let collectionId: String
@@ -41,10 +57,26 @@ struct Video: Codable {
     let likes: [Like]?
     let comments: [Comment]?
     let videoId: String?
+    let users: UserProfile? // Full user profile for display
+    
+    // Initialize from VideoDocument and UserProfile
+    init(from document: VideoDocument, userProfile: UserProfile?) {
+        self.id = document.id
+        self.collectionId = document.collectionId
+        self.databaseId = document.databaseId
+        self.createdAt = document.createdAt
+        self.updatedAt = document.updatedAt
+        self.permissions = document.permissions
+        self.caption = document.caption
+        self.likes = document.likes
+        self.comments = document.comments
+        self.videoId = document.videoId
+        self.users = userProfile
+    }
     
     enum CodingKeys: String, CodingKey {
         case id, collectionId, databaseId, createdAt, updatedAt, permissions
-        case caption, likes, comments, videoId
+        case caption, likes, comments, videoId, users
     }
     
     var timeAgo: String {

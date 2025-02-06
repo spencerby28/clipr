@@ -1,7 +1,6 @@
 import SwiftUI
 import Appwrite
 import AVKit
-import AppwriteModels
 
 struct FeedView: View {
     @StateObject private var videoManager: VideoLoadingManager
@@ -32,6 +31,7 @@ struct FeedView: View {
                             ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
                                 VideoCell(video: video, index: index, videoManager: videoManager)
                                     .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .edgesIgnoringSafeArea(.all)
                                     .id(index)
                             }
                         }
@@ -44,14 +44,18 @@ struct FeedView: View {
                     .refreshable {
                         await viewModel.loadVideos(refresh: true)
                     }
+                    .edgesIgnoringSafeArea(.all)
                 }
             }
-            .ignoresSafeArea()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .edgesIgnoringSafeArea(.all)
+            .ignoresSafeArea(edges: .all)
             .statusBar(hidden: true)
             .task {
                 await viewModel.loadVideos()
             }
         }
+        .edgesIgnoringSafeArea(.all)
     }
     
     private func handleScrollPositionChange(oldValue: Int?, newValue: Int?) {
@@ -117,66 +121,129 @@ struct ErrorView: View {
     }
 }
 
-struct VideoCell: View {
-    let video: FeedViewModel.VideoWithMetadata
-    let index: Int
-    @ObservedObject var videoManager: VideoLoadingManager
-    @State private var isPlaying = false
+class FeedViewModel: ObservableObject {
+    @Published var videos: [VideoWithMetadata] = []
+    @Published var loadingState: LoadingState = .idle
+    @Published var currentPage: Int = 1
+    private let pageSize = 10
+    private var hasMoreContent = true
+    private var isLoadingMore = false
+    private let videoManager: VideoLoadingManager
     
-    var body: some View {
-        ZStack {
-            if let url = video.url,
-               let player = videoManager.playerFor(index: index) {
-                CustomVideoPlayer(player: player, isPlaying: $isPlaying)
-                    .edgesIgnoringSafeArea(.all)
-                    .onAppear {
-                        // Configure player for looping
-                        player.actionAtItemEnd = .none
-                        NotificationCenter.default.addObserver(
-                            forName: .AVPlayerItemDidPlayToEndTime,
-                            object: player.currentItem,
-                            queue: .main) { _ in
-                                player.seek(to: .zero)
-                                player.play()
-                            }
-                        player.play()
-                        isPlaying = true
-                    }
-                    .onDisappear {
-                        NotificationCenter.default.removeObserver(
-                            self,
-                            name: .AVPlayerItemDidPlayToEndTime,
-                            object: player.currentItem
-                        )
-                        player.pause()
-                        isPlaying = false
-                    }
-                    .onTapGesture {
-                        isPlaying.toggle()
-                        if isPlaying {
-                            player.play()
-                        } else {
-                            player.pause()
-                        }
-                    }
-                
-                // Video metadata overlay
-                VideoMetadataView(video: video.metadata, user: video.creator ?? AppwriteManager.shared.currentUser!)
-                    .opacity(isPlaying ? 1 : 0.7)
-                    .animation(.easeInOut, value: isPlaying)
-            } else {
-                Color.black
-                    .overlay(
-                        Text("Unable to load video")
-                            .foregroundColor(.white)
-                    )
+    init(videoManager: VideoLoadingManager) {
+        self.videoManager = videoManager
+    }
+    
+    struct VideoWithMetadata: Identifiable {
+        let id: String
+        let metadata: Video  // This already contains all we need
+        var url: URL? {
+            guard let videoId = metadata.videoId else { return nil }
+            return AppwriteManager.shared.getVideoURL(
+                fileId: videoId, 
+                bucketId: AppwriteManager.bucketId
+            )
+        }
+    }
+    
+    enum LoadingState: Equatable {
+        case idle
+        case loading
+        case loaded
+        case error(String)
+        
+        static func == (lhs: LoadingState, rhs: LoadingState) -> Bool {
+            switch (lhs, rhs) {
+            case (.idle, .idle), (.loading, .loading), (.loaded, .loaded):
+                return true
+            case (.error(let lhsError), .error(let rhsError)):
+                return lhsError == rhsError
+            default:
+                return false
             }
+        }
+    }
+    @MainActor
+    func loadVideos(refresh: Bool = false) async {
+        print("DEBUG: loadVideos called with refresh = \(refresh). Current page = \(currentPage).")
+
+        if refresh {
+            currentPage = 1
+            videos = []
+            hasMoreContent = true
+            print("DEBUG: Refreshing. Resetting page to 1 and clearing videos.")
+        }
+        
+        guard hasMoreContent && !isLoadingMore else {
+            print("DEBUG: hasMoreContent = \(hasMoreContent), isLoadingMore = \(isLoadingMore). Aborting load.")
+            return
+        }
+        
+        isLoadingMore = true
+        
+        if videos.isEmpty {
+            loadingState = .loading
+            print("DEBUG: videos array is empty. Setting loading state to .loading.")
+        }
+        
+        do {
+            print("DEBUG: About to call listVideosWithMetadata. Limit = \(pageSize), offset = \((currentPage - 1) * pageSize)")
+            let newVideos = try await AppwriteManager.shared.listVideosWithMetadata(
+                limit: pageSize,
+                offset: (currentPage - 1) * pageSize
+            )
+            
+            print("DEBUG: listVideosWithMetadata returned \(newVideos.count) video(s).")
+            
+            // Log each video's metadata
+            for (index, video) in newVideos.enumerated() {
+                print("DEBUG: Video \(index) - Full object: \(String(describing: video))")
+                print("DEBUG: Video \(index) - ID: \(video.id)")
+                print("DEBUG: Video \(index) - VideoId: \(String(describing: video.videoId))")
+                print("DEBUG: Video \(index) - Users: \(String(describing: video.users))")
+                print("DEBUG: Video \(index) - Caption: \(String(describing: video.caption))")
+            }
+            
+            let videoWithMetadata = newVideos.map { video in
+                let metadata = VideoWithMetadata(
+                    id: video.id,
+                    metadata: video
+                )
+                print("DEBUG: Created VideoWithMetadata - ID: \(metadata.id), URL: \(String(describing: metadata.url))")
+                return metadata
+            }
+            
+            await MainActor.run {
+                if refresh {
+                    self.videos = videoWithMetadata
+                } else {
+                    self.videos.append(contentsOf: videoWithMetadata)
+                }
+                
+                print("DEBUG: Now have \(self.videos.count) total videos stored in FeedViewModel.")
+
+                self.currentPage += 1
+                self.hasMoreContent = videoWithMetadata.count == pageSize
+                self.loadingState = .loaded
+                self.isLoadingMore = false
+                
+                // Preload video URLs
+                let urls = videoWithMetadata.compactMap { $0.url }
+                print("DEBUG: Preloading video URLs. Found \(urls.count) valid URLs.")
+                print("DEBUG: URLs to preload: \(urls)")
+                self.videoManager.setVideos(urls)
+            }
+        } catch {
+            await MainActor.run {
+                self.loadingState = .error(error.localizedDescription)
+                self.isLoadingMore = false
+            }
+            print("ERROR: Failed to load videos: \(error.localizedDescription)")
         }
     }
 }
 
-
-
 #Preview {
     FeedView()
 }
+

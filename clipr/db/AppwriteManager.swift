@@ -279,18 +279,24 @@ class AppwriteManager: ObservableObject {
     }
     
     /// Lists all videos with their metadata, sorted by creation date (newest first)
-    func listVideosWithMetadata(limit: Int = 25) async throws -> [Video] {
+    func listVideosWithMetadata(limit: Int = 25, offset: Int = 0) async throws -> [Video] {
         do {
+            print("DEBUG: listVideosWithMetadata called with limit = \(limit), offset = \(offset).")
             let documents = try await appwrite.databases.listDocuments(
                 databaseId: AppwriteManager.databaseId,
                 collectionId: AppwriteManager.videosCollectionId,
                 queries: [
                     Query.orderDesc("$createdAt"),
-                    Query.limit(limit)
+                    Query.limit(limit),
+                    Query.offset(offset)
                 ]
             )
             
+            print("DEBUG: Got \(documents.documents.count) document(s) from Appwrite.")
+            
             return try documents.documents.compactMap { document in
+                print("DEBUG: Processing document with ID = \(document.id).")
+                
                 // Create a dictionary with all the document metadata and data
                 var documentDict: [String: Any] = [
                     "id": document.id,
@@ -314,15 +320,36 @@ class AppwriteManager: ObservableObject {
                 if let comments = document.data["comments"]?.value as? [[String: Any]] {
                     documentDict["comments"] = comments
                 }
-                if let username = document.data["users"]?.value as? String {
-                    documentDict["users"] = username
+                
+                // Handle nested user object
+                if let userData = document.data["users"]?.value as? [String: Any] {
+                    print("DEBUG: Found user data in document: \(userData)")
+                    var userDict: [String: Any] = [:]
+                    
+                    // Map the user fields
+                    if let id = userData["$id"] as? String { userDict["id"] = id }
+                    if let collectionId = userData["$collectionId"] as? String { userDict["collectionId"] = collectionId }
+                    if let databaseId = userData["$databaseId"] as? String { userDict["databaseId"] = databaseId }
+                    if let createdAt = userData["$createdAt"] as? String { userDict["createdAt"] = createdAt }
+                    if let updatedAt = userData["$updatedAt"] as? String { userDict["updatedAt"] = updatedAt }
+                    if let permissions = userData["$permissions"] as? [String] { userDict["permissions"] = permissions }
+                    if let userId = userData["userId"] as? String { userDict["userId"] = userId }
+                    if let username = userData["username"] as? String { userDict["username"] = username }
+                    if let name = userData["name"] as? String { userDict["name"] = name }
+                    if let phone = userData["phone"] as? String { userDict["phone"] = phone }
+                    if let avatarId = userData["avatarId"] as? String { userDict["avatarId"] = avatarId }
+                    if let email = userData["email"] as? String { userDict["email"] = email }
+                    
+                    documentDict["users"] = userDict
+                    print("DEBUG: Processed user data: \(userDict)")
                 }
                 
                 let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
+                print("DEBUG: Final document JSON: \(String(data: jsonData, encoding: .utf8) ?? "")")
                 return try JSONDecoder().decode(Video.self, from: jsonData)
             }
         } catch {
-            print("Error listing videos with metadata: \(error)")
+            print("ERROR: Error listing videos with metadata: \(error)")
             throw error
         }
     }

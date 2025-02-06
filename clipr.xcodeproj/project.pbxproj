@@ -31,7 +31,7 @@
 		09CB10812D51995700AD5446 /* AppwriteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10802D51995700AD5446 /* AppwriteManager.swift */; };
 		09CB10852D51A46800AD5446 /* VideoConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10842D51A46800AD5446 /* VideoConversion.swift */; };
 		09E1EEE32D5265D400516887 /* VideoPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */; };
-		09E1EEE82D526C5500516887 /* SimpleVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE72D526C5500516887 /* SimpleVideoView.swift */; };
+		09E1EEE82D526C5500516887 /* VideoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE72D526C5500516887 /* VideoCell.swift */; };
 		09E1EEEA2D526E6500516887 /* VideoLoadingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */; };
 		09E1EEED2D52ABFA00516887 /* ColorPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEEC2D52ABFA00516887 /* ColorPalette.swift */; };
 		09E1EEF42D52EB9300516887 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEF32D52EB9200516887 /* ImagePicker.swift */; };
@@ -72,7 +72,7 @@
 		09CB10802D51995700AD5446 /* AppwriteManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppwriteManager.swift; sourceTree = "<group>"; };
 		09CB10842D51A46800AD5446 /* VideoConversion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoConversion.swift; sourceTree = "<group>"; };
 		09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoPlayerManager.swift; sourceTree = "<group>"; };
-		09E1EEE72D526C5500516887 /* SimpleVideoView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SimpleVideoView.swift; sourceTree = "<group>"; };
+		09E1EEE72D526C5500516887 /* VideoCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoCell.swift; sourceTree = "<group>"; };
 		09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoLoadingManager.swift; sourceTree = "<group>"; };
 		09E1EEEC2D52ABFA00516887 /* ColorPalette.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ColorPalette.swift; sourceTree = "<group>"; };
 		09E1EEF32D52EB9200516887 /* ImagePicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
@@ -186,7 +186,7 @@
 			children = (
 				09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */,
 				09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */,
-				09E1EEE72D526C5500516887 /* SimpleVideoView.swift */,
+				09E1EEE72D526C5500516887 /* VideoCell.swift */,
 				09CB10642D513C5B00AD5446 /* FeedView.swift */,
 				09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */,
 			);
@@ -303,7 +303,7 @@
 			files = (
 				09E1EF062D530DFD00516887 /* OnboardingIntroView.swift in Sources */,
 				09CB106F2D513C5B00AD5446 /* FeedView.swift in Sources */,
-				09E1EEE82D526C5500516887 /* SimpleVideoView.swift in Sources */,
+				09E1EEE82D526C5500516887 /* VideoCell.swift in Sources */,
 				09CB10752D5152F200AD5446 /* CameraManager.swift in Sources */,
 				09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */,
 				09E1EF102D53BEAF00516887 /* VideoPreviewView.swift in Sources */,
