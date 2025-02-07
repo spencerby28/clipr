@@ -20,6 +20,7 @@ struct ContentView: View {
             if navigationState.isLoggedIn {
                 MainTabView()
                     .environmentObject(navigationState)
+                     .persistentSystemOverlays(.hidden)
             } else if !navigationState.hasSeenOnboarding {
                 OnboardingIntroView()
                     .environmentObject(navigationState)

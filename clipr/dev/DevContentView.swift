@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct DevContentView: View {
     var body: some View {
         GeometryReader {
             let size = $0.size
@@ -20,5 +20,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    DevContentView()
 }

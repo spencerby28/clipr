@@ -12,6 +12,19 @@
 		092AE3252D51252C0055BDBB /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 092AE3242D51252C0055BDBB /* Preview Assets.xcassets */; };
 		092AE32C2D512A6B0055BDBB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 092AE32B2D512A6B0055BDBB /* GoogleService-Info.plist */; };
 		092AE3782D512E7D0055BDBB /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 092AE3772D512E7D0055BDBB /* Appwrite */; };
+		096E49EB2D5511C600CBCDCC /* DevContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49EA2D5511C600CBCDCC /* DevContentView.swift */; };
+		096E49EF2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49EC2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift */; };
+		096E49F02D5511CE00CBCDCC /* Home.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49ED2D5511CE00CBCDCC /* Home.swift */; };
+		096E49F12D5511CE00CBCDCC /* ReelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49EE2D5511CE00CBCDCC /* ReelView.swift */; };
+		096E49F72D5514C000CBCDCC /* Reel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49F52D5514C000CBCDCC /* Reel.swift */; };
+		096E49F82D5514C000CBCDCC /* Like.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49F62D5514C000CBCDCC /* Like.swift */; };
+		096E49FA2D5514DF00CBCDCC /* OffsetKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49F92D5514DF00CBCDCC /* OffsetKey.swift */; };
+		096E49FC2D551A0D00CBCDCC /* ReelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49FB2D551A0D00CBCDCC /* ReelLoader.swift */; };
+		096E4A052D55697700CBCDCC /* FeedSelectorBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E4A042D55697700CBCDCC /* FeedSelectorBadge.swift */; };
+		096E4A072D55741400CBCDCC /* FeedActionItems.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E4A062D55741400CBCDCC /* FeedActionItems.swift */; };
+		096E4A0A2D55DE3500CBCDCC /* FriendSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E4A092D55DE3500CBCDCC /* FriendSheet.swift */; };
+		096E4A0D2D55F76F00CBCDCC /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 096E4A0C2D55F76F00CBCDCC /* Kingfisher */; };
+		096E4A0F2D56013F00CBCDCC /* ProfileSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E4A0E2D56013F00CBCDCC /* ProfileSheet.swift */; };
 		09C593752D53DAB00052DCF2 /* VideoSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593742D53DAB00052DCF2 /* VideoSchema.swift */; };
 		09C593772D53DB1B0052DCF2 /* VideoMetadataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */; };
 		09C593792D53DB5D0052DCF2 /* UserSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593782D53DB5D0052DCF2 /* UserSchema.swift */; };
@@ -53,6 +66,18 @@
 		092AE3212D51252C0055BDBB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		092AE3242D51252C0055BDBB /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		092AE32B2D512A6B0055BDBB /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		096E49EA2D5511C600CBCDCC /* DevContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DevContentView.swift; sourceTree = "<group>"; };
+		096E49EC2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DevCustomVideoPlayer.swift; sourceTree = "<group>"; };
+		096E49ED2D5511CE00CBCDCC /* Home.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Home.swift; sourceTree = "<group>"; };
+		096E49EE2D5511CE00CBCDCC /* ReelView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReelView.swift; sourceTree = "<group>"; };
+		096E49F52D5514C000CBCDCC /* Reel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Reel.swift; sourceTree = "<group>"; };
+		096E49F62D5514C000CBCDCC /* Like.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Like.swift; sourceTree = "<group>"; };
+		096E49F92D5514DF00CBCDCC /* OffsetKey.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OffsetKey.swift; sourceTree = "<group>"; };
+		096E49FB2D551A0D00CBCDCC /* ReelLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReelLoader.swift; sourceTree = "<group>"; };
+		096E4A042D55697700CBCDCC /* FeedSelectorBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedSelectorBadge.swift; sourceTree = "<group>"; };
+		096E4A062D55741400CBCDCC /* FeedActionItems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedActionItems.swift; sourceTree = "<group>"; };
+		096E4A092D55DE3500CBCDCC /* FriendSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendSheet.swift; sourceTree = "<group>"; };
+		096E4A0E2D56013F00CBCDCC /* ProfileSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSheet.swift; sourceTree = "<group>"; };
 		09C593742D53DAB00052DCF2 /* VideoSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSchema.swift; sourceTree = "<group>"; };
 		09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoMetadataView.swift; sourceTree = "<group>"; };
 		09C593782D53DB5D0052DCF2 /* UserSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSchema.swift; sourceTree = "<group>"; };
@@ -93,6 +118,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				096E4A0D2D55F76F00CBCDCC /* Kingfisher in Frameworks */,
 				092AE3782D512E7D0055BDBB /* Appwrite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -145,6 +171,25 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		096E49F42D5514B100CBCDCC /* model */ = {
+			isa = PBXGroup;
+			children = (
+				096E49F62D5514C000CBCDCC /* Like.swift */,
+				096E49F52D5514C000CBCDCC /* Reel.swift */,
+				096E49FB2D551A0D00CBCDCC /* ReelLoader.swift */,
+			);
+			path = model;
+			sourceTree = "<group>";
+		};
+		096E4A082D55DD1A00CBCDCC /* sheets */ = {
+			isa = PBXGroup;
+			children = (
+				096E4A092D55DE3500CBCDCC /* FriendSheet.swift */,
+				096E4A0E2D56013F00CBCDCC /* ProfileSheet.swift */,
+			);
+			path = sheets;
+			sourceTree = "<group>";
+		};
 		09E1EEEB2D52ABFA00516887 /* utils */ = {
 			isa = PBXGroup;
 			children = (
@@ -184,11 +229,14 @@
 		09E1EEF02D52ACA400516887 /* feed */ = {
 			isa = PBXGroup;
 			children = (
+				096E4A082D55DD1A00CBCDCC /* sheets */,
 				09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */,
 				09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */,
 				09E1EEE72D526C5500516887 /* VideoCell.swift */,
 				09CB10642D513C5B00AD5446 /* FeedView.swift */,
+				096E4A042D55697700CBCDCC /* FeedSelectorBadge.swift */,
 				09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */,
+				096E4A062D55741400CBCDCC /* FeedActionItems.swift */,
 			);
 			path = feed;
 			sourceTree = "<group>";
@@ -210,6 +258,12 @@
 		09E1EEFE2D530B4200516887 /* dev */ = {
 			isa = PBXGroup;
 			children = (
+				096E49F42D5514B100CBCDCC /* model */,
+				096E49EC2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift */,
+				096E49ED2D5511CE00CBCDCC /* Home.swift */,
+				096E49F92D5514DF00CBCDCC /* OffsetKey.swift */,
+				096E49EE2D5511CE00CBCDCC /* ReelView.swift */,
+				096E49EA2D5511C600CBCDCC /* DevContentView.swift */,
 			);
 			path = dev;
 			sourceTree = "<group>";
@@ -242,6 +296,7 @@
 			name = clipr;
 			packageProductDependencies = (
 				092AE3772D512E7D0055BDBB /* Appwrite */,
+				096E4A0C2D55F76F00CBCDCC /* Kingfisher */,
 			);
 			productName = clipr;
 			productReference = 092AE31A2D51252A0055BDBB /* clipr.app */;
@@ -273,6 +328,7 @@
 			mainGroup = 092AE3112D51252A0055BDBB;
 			packageReferences = (
 				092AE3762D512E7D0055BDBB /* XCRemoteSwiftPackageReference "sdk-for-apple" */,
+				096E4A0B2D55F76F00CBCDCC /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			productRefGroup = 092AE31B2D51252A0055BDBB /* Products */;
 			projectDirPath = "";
@@ -301,11 +357,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				096E49F82D5514C000CBCDCC /* Like.swift in Sources */,
 				09E1EF062D530DFD00516887 /* OnboardingIntroView.swift in Sources */,
 				09CB106F2D513C5B00AD5446 /* FeedView.swift in Sources */,
 				09E1EEE82D526C5500516887 /* VideoCell.swift in Sources */,
+				096E4A072D55741400CBCDCC /* FeedActionItems.swift in Sources */,
 				09CB10752D5152F200AD5446 /* CameraManager.swift in Sources */,
 				09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */,
+				096E4A0F2D56013F00CBCDCC /* ProfileSheet.swift in Sources */,
+				096E49EB2D5511C600CBCDCC /* DevContentView.swift in Sources */,
 				09E1EF102D53BEAF00516887 /* VideoPreviewView.swift in Sources */,
 				092AE3202D51252A0055BDBB /* ContentView.swift in Sources */,
 				09CB106E2D513C5B00AD5446 /* ProfileView.swift in Sources */,
@@ -313,20 +373,28 @@
 				09CB10672D513C5B00AD5446 /* NavigationState.swift in Sources */,
 				09E1EEFB2D52EB9A00516887 /* OnboardingPhoneAuthView.swift in Sources */,
 				09CB10812D51995700AD5446 /* AppwriteManager.swift in Sources */,
+				096E49F72D5514C000CBCDCC /* Reel.swift in Sources */,
 				09E1EEF92D52EB9A00516887 /* OnboardingFlowView.swift in Sources */,
 				09E1EF032D530DE100516887 /* PageIndicator.swift in Sources */,
+				096E4A0A2D55DE3500CBCDCC /* FriendSheet.swift in Sources */,
 				09CB10852D51A46800AD5446 /* VideoConversion.swift in Sources */,
 				09E1EF092D530E3E00516887 /* MorphingSymbolView.swift in Sources */,
+				096E49EF2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift in Sources */,
 				09CB106A2D513C5B00AD5446 /* Appwrite.swift in Sources */,
 				09C593772D53DB1B0052DCF2 /* VideoMetadataView.swift in Sources */,
 				09CB106C2D513C5B00AD5446 /* MainTabView.swift in Sources */,
+				096E49FA2D5514DF00CBCDCC /* OffsetKey.swift in Sources */,
 				09E1EEF42D52EB9300516887 /* ImagePicker.swift in Sources */,
 				09E1EEFA2D52EB9A00516887 /* OnboardingDetailsView.swift in Sources */,
 				09C593792D53DB5D0052DCF2 /* UserSchema.swift in Sources */,
+				096E49F12D5511CE00CBCDCC /* ReelView.swift in Sources */,
+				096E49FC2D551A0D00CBCDCC /* ReelLoader.swift in Sources */,
 				09C593752D53DAB00052DCF2 /* VideoSchema.swift in Sources */,
 				09E1EEE32D5265D400516887 /* VideoPlayerManager.swift in Sources */,
 				09CB10792D51538800AD5446 /* CameraPreviewView.swift in Sources */,
+				096E49F02D5511CE00CBCDCC /* Home.swift in Sources */,
 				09E1EEED2D52ABFA00516887 /* ColorPalette.swift in Sources */,
+				096E4A052D55697700CBCDCC /* FeedSelectorBadge.swift in Sources */,
 				09E1EF022D530DE100516887 /* OnboardingSymbolView.swift in Sources */,
 				09CB107A2D51538800AD5446 /* CIImage+Extension.swift in Sources */,
 				09CB107B2D51538800AD5446 /* CMSampleBuffer+Extension.swift in Sources */,
@@ -566,6 +634,14 @@
 				version = 7.0.0;
 			};
 		};
+		096E4A0B2D55F76F00CBCDCC /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -573,6 +649,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 092AE3762D512E7D0055BDBB /* XCRemoteSwiftPackageReference "sdk-for-apple" */;
 			productName = Appwrite;
+		};
+		096E4A0C2D55F76F00CBCDCC /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 096E4A0B2D55F76F00CBCDCC /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

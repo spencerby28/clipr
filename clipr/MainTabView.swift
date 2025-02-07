@@ -17,12 +17,6 @@ struct MainTabView: View {
                     ProfileView()
                 }
             }
-            .onTapGesture {
-                // Single tap cycles through tabs
-                let currentRawValue = navigationState.selectedTab.rawValue
-                let nextRawValue = (currentRawValue + 1) % 3
-                navigationState.selectedTab = NavigationState.Tab(rawValue: nextRawValue) ?? .feed
-            }
             .gesture(
                 LongPressGesture(minimumDuration: 0.5)
                     .sequenced(before: DragGesture(minimumDistance: 0))
@@ -67,4 +61,4 @@ struct MainTabView: View {
             }
         }
     }
-} 
+}

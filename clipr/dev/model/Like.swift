@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Like Animation Model
-struct Like: Identifiable {
+struct devLike: Identifiable {
     var id: UUID = .init()
     var tappedRect: CGPoint = .zero
     var isAnimated: Bool = false

@@ -6,6 +6,10 @@ struct FeedView: View {
     @StateObject private var videoManager: VideoLoadingManager
     @StateObject private var viewModel: FeedViewModel
     @State private var currentIndex: Int? = 0
+    @State private var selectedFeed: FeedType = .friends
+    @State private var isFeedExpanded: Bool = false
+    @State private var showSettingsSheet = false
+    @State private var showProfileSheet = false
     
     init() {
         let manager = VideoLoadingManager()
@@ -26,25 +30,61 @@ struct FeedView: View {
                         }
                     }
                 case .loading, .loaded:
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
-                                VideoCell(video: video, index: index, videoManager: videoManager)
-                                    .frame(width: geometry.size.width, height: geometry.size.height)
-                                    .edgesIgnoringSafeArea(.all)
-                                    .id(index)
+                    ZStack {
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(viewModel.videos.enumerated()), id: \.element.id) { index, video in
+                                    VideoCell(video: video, index: index, videoManager: videoManager)
+                                        .frame(width: geometry.size.width, height: geometry.size.height)
+                                        .edgesIgnoringSafeArea(.all)
+                                        .id(index)
+                                }
                             }
                         }
+                        .scrollTargetBehavior(.paging)
+                        .scrollPosition(id: $currentIndex)
+                        .onChange(of: currentIndex) { oldValue, newValue in
+                            handleScrollPositionChange(oldValue: oldValue, newValue: newValue)
+                        }
+                        .refreshable {
+                            await viewModel.loadVideos(refresh: true)
+                        }
+                        .edgesIgnoringSafeArea(.all)
+                        
+                        // App title overlay
+                        VStack(spacing: 0) {
+                            if isFeedExpanded {
+                                FeedActionItems(showSettingsSheet: $showSettingsSheet, showProfileSheet: $showProfileSheet, isExpanded: $isFeedExpanded)
+                                    .ignoresSafeArea()
+                            }
+                            
+                            VStack(spacing: 16) {
+                                Text("clipr")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                                FeedSelectorBadge(selectedFeed: $selectedFeed, isExpanded: $isFeedExpanded)
+                            }
+                            .padding(.top, isFeedExpanded ? -2 : 56)
+                            
+                            Spacer()
+                        }
                     }
-                    .scrollTargetBehavior(.paging)
-                    .scrollPosition(id: $currentIndex)
-                    .onChange(of: currentIndex) { oldValue, newValue in
-                        handleScrollPositionChange(oldValue: oldValue, newValue: newValue)
-                    }
-                    .refreshable {
-                        await viewModel.loadVideos(refresh: true)
-                    }
-                    .edgesIgnoringSafeArea(.all)
+                }
+            }
+            .sheet(isPresented: $showSettingsSheet) {
+                FriendSheet(isPresented: $showSettingsSheet)
+            }
+            .sheet(isPresented: $showProfileSheet) {
+                ProfileSheet(isPresented: $showProfileSheet)    
+            }
+            .onChange(of: showSettingsSheet) { _, isPresented in
+                if isPresented, let currentIndex {
+                    videoManager.pauseAllExcept(index: -1) // Pause all videos
+                }
+            }
+            .onChange(of: showProfileSheet) { _, isPresented in
+                if isPresented, let currentIndex {
+                    videoManager.pauseAllExcept(index: -1) // Pause all videos
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -243,7 +283,53 @@ class FeedViewModel: ObservableObject {
     }
 }
 
-#Preview {
-    FeedView()
+struct FeedView_Previews: View {
+    @State private var isExpanded: Bool = true
+    @State private var showSettingsSheet = false
+    @State private var showProfileSheet = false
+    @State private var selectedFeed: FeedType = .friends
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.blue // Simple blue background
+                
+                VStack(spacing: 0) {
+                    if isExpanded {
+                        FeedActionItems(showSettingsSheet: $showSettingsSheet, showProfileSheet: $showProfileSheet, isExpanded: $isExpanded)
+                            .ignoresSafeArea()
+                    }
+                    
+                    VStack(spacing: 16) {
+                        Text("clipr")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.white)
+                        FeedSelectorBadge(selectedFeed: $selectedFeed, isExpanded: $isExpanded)
+                            .onTapGesture {
+                                if selectedFeed == .friends {
+                                    showSettingsSheet = true
+                                }
+                            }
+                    }
+                    .padding(.top, isExpanded ? -2 : 56)
+                    
+                    Spacer()
+                }
+            }
+            .sheet(isPresented: $showSettingsSheet) {
+                FriendSheet(isPresented: $showSettingsSheet)
+            }
+            .sheet(isPresented: $showProfileSheet) {
+                ProfileSheet(isPresented: $showProfileSheet)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .edgesIgnoringSafeArea(.all)
+            .statusBar(hidden: true)
+        }
+    }
 }
 
+#Preview {
+    FeedView_Previews()
+        .preferredColorScheme(.dark)
+}

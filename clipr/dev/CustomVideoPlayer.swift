@@ -8,7 +8,7 @@
 import SwiftUI
 import AVKit
 
-struct DevCustomVideoPlayer: UIViewControllerRepresentable {
+struct CustomVideoPlayer: UIViewControllerRepresentable {
     @Binding var player: AVPlayer?
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
@@ -24,4 +24,3 @@ struct DevCustomVideoPlayer: UIViewControllerRepresentable {
         uiViewController.player = player
     }
 }
-

@@ -2,7 +2,10 @@ import SwiftUI
 
 class NavigationState: ObservableObject {
     enum Tab: Int {
-        case feed, camera, profile
+        case feed = 0
+        case camera = 1
+        case profile = 2
+        
     }
     
     @Published var selectedTab: Tab = .feed
@@ -50,4 +53,4 @@ class NavigationState: ObservableObject {
             ("Profile", "person.fill", .profile)
         ]
     }
-} 
+}

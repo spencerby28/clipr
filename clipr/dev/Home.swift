@@ -11,46 +11,86 @@ struct Home: View {
     var size: CGSize
     var safeArea: EdgeInsets
     /// View Properties
-    @State private var reels: [Reel] = reelsData
-    @State private var likedCounter: [Like] = []
+    @StateObject private var reelLoader = ReelLoader()
+    @State private var likedCounter: [devLike] = []
+    
     var body: some View {
-        ScrollView(.vertical) {
-            LazyVStack(spacing: 0) {
-                ForEach($reels) { $reel in
-                    ReelView(
-                        reel: $reel,
-                        likedCounter: $likedCounter,
-                        size: size,
-                        safeArea: safeArea
-                    )
-                    .frame(maxWidth: .infinity)
-                    .containerRelativeFrame(.vertical)
+        ZStack {
+            switch reelLoader.loadingState {
+            case .idle, .loading where reelLoader.reels.isEmpty:
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.black)
+            
+            case .error(let message):
+                VStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 40))
+                    Text(message)
+                        .multilineTextAlignment(.center)
+                    Button("Retry") {
+                        Task {
+                            await reelLoader.loadReels(refresh: true)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(.white.opacity(0.1))
+                    .clipShape(Capsule())
                 }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.black)
+                
+            case .loading, .loaded:
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(reelLoader.reels.indices, id: \.self) { index in
+                            ReelView(
+                                reel: $reelLoader.reels[index],
+                                likedCounter: $likedCounter,
+                                size: size,
+                                safeArea: safeArea,
+                                currentIndex: index,
+                                allReels: $reelLoader.reels
+                            )
+                            .frame(maxWidth: .infinity)
+                            .containerRelativeFrame(.vertical)
+                            .onAppear {
+                                if index == reelLoader.reels.count - 2 {
+                                    Task {
+                                        await reelLoader.loadReels()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.paging)
+                .background(.black)
+                /// Like Animation View
+                .overlay(alignment: .topLeading, content: {
+                    ZStack {
+                        ForEach(likedCounter) { like in
+                            Image(systemName: "suit.heart.fill")
+                                .font(.system(size: 75))
+                                .foregroundStyle(.red.gradient)
+                                .frame(width: 100, height: 100)
+                                .animation(.smooth, body: { view in
+                                    view
+                                        .scaleEffect(like.isAnimated ? 1 : 1.8)
+                                        .rotationEffect(.init(degrees: like.isAnimated ? 0 : .random(in: -30...30)))
+                                })
+                                .offset(x: like.tappedRect.x - 50, y: like.tappedRect.y - 50)
+                                .offset(y: like.isAnimated ? -(like.tappedRect.y + safeArea.top) : 0)
+                        }
+                    }
+                })
             }
         }
-        .scrollIndicators(.hidden)
-        .scrollTargetBehavior(.paging)
-        .background(.black)
-        /// Like Animation View
-        .overlay(alignment: .topLeading, content: {
-            ZStack {
-                ForEach(likedCounter) { like in
-                    Image(systemName: "suit.heart.fill")
-                        .font(.system(size: 75))
-                        .foregroundStyle(.red.gradient)
-                        .frame(width: 100, height: 100)
-                        /// Adding Some Implicit Rotation & Scaling Animation
-                        .animation(.smooth, body: { view in
-                            view
-                                .scaleEffect(like.isAnimated ? 1 : 1.8)
-                                .rotationEffect(.init(degrees: like.isAnimated ? 0 : .random(in: -30...30)))
-                        })
-                        .offset(x: like.tappedRect.x - 50, y: like.tappedRect.y - 50)
-                        /// Let's Animate
-                        .offset(y: like.isAnimated ? -(like.tappedRect.y + safeArea.top) : 0)
-                }
-            }
-        })
         .overlay(alignment: .top, content: {
             Text("Reels")
                 .font(.title3)
@@ -67,6 +107,9 @@ struct Home: View {
                 .padding(.horizontal, 15)
         })
         .environment(\.colorScheme, .dark)
+        .task {
+            await reelLoader.loadReels()
+        }
     }
 }
 
