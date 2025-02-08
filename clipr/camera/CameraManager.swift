@@ -62,6 +62,8 @@ class CameraManager: NSObject, ObservableObject {
     @Published private(set) var lastRecordedVideoURL: URL?
     @Published var showingPreview = false
     
+    var onVideoProcessingStateChanged: ((Bool) -> Void)?
+    
     override init() {
         super.init()
         sessionQueue.async {
@@ -319,6 +321,10 @@ class CameraManager: NSObject, ObservableObject {
     }
     
     private func combineVideos(firstHalfURL: URL, secondHalfURL: URL) async {
+        DispatchQueue.main.async {
+            self.onVideoProcessingStateChanged?(true)
+        }
+        
         let startTime = Date()
         print("🔄 Video combination started at: \(startTime)")
         
@@ -328,6 +334,9 @@ class CameraManager: NSObject, ObservableObject {
             preferredTrackID: kCMPersistentTrackID_Invalid
         ) else {
             print("Failed to create video track")
+            DispatchQueue.main.async {
+                self.onVideoProcessingStateChanged?(false)
+            }
             return
         }
         let audioTrack = composition.addMutableTrack(
@@ -366,6 +375,9 @@ class CameraManager: NSObject, ObservableObject {
                 presetName: AVAssetExportPresetHighestQuality
             ) else {
                 print("Failed to create export session")
+                DispatchQueue.main.async {
+                    self.onVideoProcessingStateChanged?(false)
+                }
                 return
             }
             
@@ -401,14 +413,21 @@ class CameraManager: NSObject, ObservableObject {
                 DispatchQueue.main.async {
                     self.lastRecordedVideoURL = outputURL
                     self.showingPreview = true
+                    self.onVideoProcessingStateChanged?(false)
                 }
                 saveVideoToPhotoLibrary(fileURL: outputURL)
             } else if let error = exportSession.error {
                 print("❌ Export failed: \(error)")
+                DispatchQueue.main.async {
+                    self.onVideoProcessingStateChanged?(false)
+                }
             }
             
         } catch {
             print("Error combining videos: \(error)")
+            DispatchQueue.main.async {
+                self.onVideoProcessingStateChanged?(false)
+            }
         }
     }
     

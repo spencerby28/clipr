@@ -36,6 +36,7 @@ struct FeedActionItems: View {
                 .background {
                     Capsule()
                         .fill(.thinMaterial)
+                        .preferredColorScheme(.dark)
                         .opacity(0.7)
                 }
             }
@@ -65,6 +66,7 @@ struct FeedActionItems: View {
                     Capsule()
                         .fill(.thinMaterial)
                         .opacity(0.7)
+                        .preferredColorScheme(.dark)
                 }
             }
         }

@@ -31,7 +31,8 @@ struct FeedOptionView: View {
                     } else {
                         Capsule()
                         .fill(.thinMaterial)
-                        .opacity(0.7)
+                        .preferredColorScheme(.dark)
+                        
                             .opacity(isSelected ? 1.0 : 0.3)
                     }
                 }

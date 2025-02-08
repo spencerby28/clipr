@@ -5,11 +5,22 @@ import SwiftUI
 class CameraViewModel: ObservableObject {
     @Published var currentFrame: CGImage?
     @Published var isRecording: Bool = false
+    @Published var isProcessingVideo: Bool = false
     private var cameraManager: CameraManager?
     private var previewTask: Task<Void, Never>?
     
     init() {
         print("CameraViewModel init")
+        setupCameraManager()
+    }
+    
+    private func setupCameraManager() {
+        cameraManager = CameraManager()
+        cameraManager?.onVideoProcessingStateChanged = { [weak self] isProcessing in
+            DispatchQueue.main.async {
+                self?.isProcessingVideo = isProcessing
+            }
+        }
     }
     
     deinit {

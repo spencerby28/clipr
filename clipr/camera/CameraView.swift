@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CameraView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var navigationState: NavigationState
     @StateObject private var cameraManager = CameraManager()
     @State private var currentFrame: CGImage?
     @State private var isProcessing = false
@@ -22,7 +23,11 @@ struct CameraView: View {
                     Spacer()
                     // Camera Preview Container
                     ZStack {
-                        if let image = currentFrame {
+                        if isProcessing {
+                            RecordingProcessingView(cornerRadius: cornerRadius)
+                                .frame(width: viewWidth - 32, height: previewHeight)
+                                .transition(.opacity)
+                        } else if let image = currentFrame {
                             Image(decorative: image, scale: 1.0)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -41,21 +46,6 @@ struct CameraView: View {
                                             RoundedRectangle(cornerRadius: cornerRadius)
                                                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
                                         }
-                                        
-                                        if isProcessing {
-                                            RoundedRectangle(cornerRadius: cornerRadius)
-                                                .fill(
-                                                    LinearGradient(
-                                                        gradient: Gradient(colors: [
-                                                            Color.black.opacity(0.3),
-                                                            Color.black.opacity(0.7)
-                                                        ]),
-                                                        startPoint: .top,
-                                                        endPoint: .bottom
-                                                    )
-                                                )
-                                                .transition(.opacity)
-                                        }
                                     }
                                     .padding(borderWidth/2)
                                 )
@@ -71,35 +61,46 @@ struct CameraView: View {
                         }
                         
                         // Camera Controls
-                        VStack {
-                            HStack {
+                        if !isProcessing {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    if !cameraManager.isRecording {
+                                        Button(action: {
+                                            cameraManager.toggleCamera()
+                                        }) {
+                                            Image(systemName: "camera.rotate.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.white)
+                                                .padding(12)
+                                                .background(Color.black.opacity(0.5))
+                                                .clipShape(Circle())
+                                        }
+                                        .padding(12)
+                                        .padding(.vertical, 20)
+                                    }
+                                }
                                 Spacer()
+                                
+                                // Record button
                                 if !cameraManager.isRecording {
                                     Button(action: {
-                                        cameraManager.toggleCamera()
+                                        cameraManager.startRecording()
                                     }) {
-                                        Image(systemName: "camera.rotate.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.white)
-                                            .padding(12)
-                                            .background(Color.black.opacity(0.5))
-                                            .clipShape(Circle())
+                                        ZStack {
+                                            Circle()
+                                                .fill(.thinMaterial)
+                                                .preferredColorScheme(.dark)
+                                                .frame(width: 70, height: 70)
+                                            
+                      
+                                            Image(systemName: "record.circle")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.white)
+                                        }
                                     }
-                                    .padding(16)
+                                    .padding(.bottom, 40)
                                 }
-                            }
-                            Spacer()
-                            
-                            // Record button
-                            if !cameraManager.isRecording {
-                                Button(action: {
-                                    cameraManager.startRecording()
-                                }) {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 70, height: 70)
-                                }
-                                .padding(.bottom, 40)
                             }
                         }
                     }
@@ -117,25 +118,32 @@ struct CameraView: View {
                     }
                 }
             }
-            // Countdown overlay moved to top right with a smaller font.
+            // Countdown overlay
             .overlay(
                 Group {
                     if cameraManager.shouldShowCountdown {
                         Text("\(cameraManager.countdown)")
-                            .font(.system(size: 40, weight: .bold))
+                            .font(.system(size: 80, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.top, 16)
-                            .padding(.trailing, 16)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.top, 100)
                             .transition(.scale.combined(with: .opacity))
                             .animation(.easeInOut, value: cameraManager.countdown)
                     }
                 },
-                alignment: .topTrailing
+                alignment: .top
             )
             .onChange(of: cameraManager.isRecording) { _, isRecording in
                 if !isRecording && cameraManager.recordButtonProgress >= 1.0 {
                     withAnimation {
                         isProcessing = true
+                    }
+                }
+            }
+            .onAppear {
+                cameraManager.onVideoProcessingStateChanged = { processing in
+                    withAnimation {
+                        isProcessing = processing
                     }
                 }
             }
@@ -169,6 +177,7 @@ struct CameraView: View {
                     cameraManager.stopSession()
                 }
             }
+            .statusBar(hidden: true)
         }
         .fullScreenCover(isPresented: $cameraManager.showingPreview) {
             if let videoURL = cameraManager.lastRecordedVideoURL {
@@ -179,9 +188,6 @@ struct CameraView: View {
                             isProcessing = false
                         }
                         cameraManager.showingPreview = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            cameraManager.startRecording()
-                        }
                     },
                     onSend: { progressCallback in
                         Task {
@@ -193,13 +199,171 @@ struct CameraView: View {
                         }
                     }
                 )
+                .environmentObject(navigationState)
             }
         }
     }
 }
 
+#Preview {
+    NavigationStack {
+        CameraView()
+            .preferredColorScheme(.dark)
+    }
+}
+
+struct CameraPreviewContainer: View {
+    let viewWidth: CGFloat
+    let previewHeight: CGFloat
+    let showRecordButton: Bool
+    let isRecording: Bool
+    let isProcessing: Bool
+    let showCountdown: Bool
+    let countdown: Int
+    
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            VStack {
+                Spacer()
+                // Camera Preview Container
+                ZStack {
+                    if isProcessing {
+                        RecordingProcessingView(cornerRadius: 24)
+                            .frame(width: viewWidth - 32, height: previewHeight)
+                    } else {
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: viewWidth - 32, height: previewHeight)
+                            .overlay(
+                                ZStack {
+                                    if isRecording {
+                                        RecordingBorder(
+                                            progress: 0.5,
+                                            cornerRadius: 24
+                                        )
+                                        .stroke(Color.red, lineWidth: 3)
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 24)
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    }
+                                }
+                                .padding(3/2)
+                            )
+                        
+                        // Camera Controls
+                        if !isProcessing {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    if !isRecording {
+                                        Button(action: {}) {
+                                            Image(systemName: "camera.rotate.fill")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.white)
+                                                .padding(12)
+                                                .background(Color.black.opacity(0.5))
+                                                .clipShape(Circle())
+                                        }
+                                        .padding(12)
+                                        .padding(.vertical, 20)
+                                    }
+                                }
+                                Spacer()
+                                
+                                if showRecordButton && !isRecording {
+                                    Button(action: {}) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(.thinMaterial)
+                                                .preferredColorScheme(.dark)
+                                                .frame(width: 70, height: 70)
+                                            
+                      
+                                            Image(systemName: "record.circle")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    .padding(.bottom, 40)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                Spacer()
+            }
+            
+            // Top progress bar
+            if isRecording {
+                GeometryReader { metrics in
+                    Rectangle()
+                        .fill(Color.white)
+                        .frame(width: metrics.size.width * 0.5, height: 4)
+                        .position(x: metrics.size.width/2, y: 2)
+                }
+            }
+            
+            if showCountdown {
+                Text("\(countdown)")
+                    .font(.system(size: 80, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 100)
+            }
+        }
+        .statusBar(hidden: true)
+    }
+}
+
 struct CameraView_Previews: PreviewProvider {
     static var previews: some View {
-        CameraView()
+        Group {
+            // Initial state
+            GeometryReader { geometry in
+                CameraPreviewContainer(
+                    viewWidth: geometry.size.width,
+                    previewHeight: geometry.size.width * (16.0/9.0),
+                    showRecordButton: true,
+                    isRecording: false,
+                    isProcessing: false,
+                    showCountdown: false,
+                    countdown: 0
+                )
+            }
+            .previewDisplayName("Initial State")
+            
+            // Recording state with countdown
+            GeometryReader { geometry in
+                CameraPreviewContainer(
+                    viewWidth: geometry.size.width,
+                    previewHeight: geometry.size.width * (16.0/9.0),
+                    showRecordButton: false,
+                    isRecording: true,
+                    isProcessing: false,
+                    showCountdown: true,
+                    countdown: 3
+                )
+            }
+            .previewDisplayName("Recording with Countdown")
+            
+            // Processing state
+            GeometryReader { geometry in
+                CameraPreviewContainer(
+                    viewWidth: geometry.size.width,
+                    previewHeight: geometry.size.width * (16.0/9.0),
+                    showRecordButton: false,
+                    isRecording: false,
+                    isProcessing: true,
+                    showCountdown: false,
+                    countdown: 0
+                )
+            }
+            .previewDisplayName("Processing")
+        }
+        .preferredColorScheme(.dark)
+        .previewLayout(.sizeThatFits)
     }
 }
