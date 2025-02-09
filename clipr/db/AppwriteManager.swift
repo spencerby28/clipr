@@ -264,6 +264,15 @@ class AppwriteManager: ObservableObject {
     func getVideoURL(fileId: String, bucketId: String) -> URL? {
         return appwrite.getFileViewURL(bucketId: bucketId, fileId: fileId)
     }
+    func uploadThumbnail(thumbnailData: Data, videoId: String) async throws -> String {
+    let fileName = "\(videoId).jpg"
+    let file = try await appwrite.storage.createFile(
+         bucketId: "thumbnails",
+         fileId: videoId,  // use the same id as the video clip
+         file: InputFile.fromData(thumbnailData, filename: fileName, mimeType: "image/jpeg")
+    )
+    return file.id
+}
     
     /// Lists all videos in the clips bucket
     func listVideos() async throws -> [AppwriteModels.File] {
@@ -276,6 +285,11 @@ class AppwriteManager: ObservableObject {
             print("Error listing videos: \(error)")
             throw error
         }
+    }
+    
+    /// Gets the URL for a video's thumbnail
+    func getThumbnailURL(thumbnailId: String) -> URL? {
+        return appwrite.getFileViewURL(bucketId: "thumbnails", fileId: thumbnailId)
     }
     
     /// Lists all videos with their metadata, sorted by creation date (newest first)
@@ -294,59 +308,76 @@ class AppwriteManager: ObservableObject {
             
             print("DEBUG: Got \(documents.documents.count) document(s) from Appwrite.")
             
-            return try documents.documents.compactMap { document in
-                print("DEBUG: Processing document with ID = \(document.id).")
+            // Process documents in parallel using async/await
+            return try await withThrowingTaskGroup(of: Video?.self) { group in
+                var videos: [Video] = []
                 
-                // Create a dictionary with all the document metadata and data
-                var documentDict: [String: Any] = [
-                    "id": document.id,
-                    "collectionId": document.collectionId,
-                    "databaseId": document.databaseId,
-                    "createdAt": document.createdAt,
-                    "updatedAt": document.updatedAt,
-                    "permissions": document.permissions
-                ]
+                for document in documents.documents {
+                    group.addTask {
+                        print("DEBUG: Processing document with ID = \(document.id).")
+                        
+                        // Create a dictionary with all the document metadata and data
+                        var documentDict: [String: Any] = [
+                            "id": document.id,
+                            "collectionId": document.collectionId,
+                            "databaseId": document.databaseId,
+                            "createdAt": document.createdAt,
+                            "updatedAt": document.updatedAt,
+                            "permissions": document.permissions
+                        ]
+                        
+                        // Add video-specific fields
+                        if let videoId = document.data["videoId"]?.value as? String {
+                            documentDict["videoId"] = videoId
+                        }
+                        
+                        // Add remaining fields
+                        if let caption = document.data["caption"]?.value as? String {
+                            documentDict["caption"] = caption
+                        }
+                        if let likes = document.data["likes"]?.value as? [[String: Any]] {
+                            documentDict["likes"] = likes
+                        }
+                        if let comments = document.data["comments"]?.value as? [[String: Any]] {
+                            documentDict["comments"] = comments
+                        }
+                        
+                        // Handle nested user object
+                        if let userData = document.data["users"]?.value as? [String: Any] {
+                            print("DEBUG: Found user data in document: \(userData)")
+                            var userDict: [String: Any] = [:]
+                            
+                            // Map the user fields
+                            if let id = userData["$id"] as? String { userDict["id"] = id }
+                            if let collectionId = userData["$collectionId"] as? String { userDict["collectionId"] = collectionId }
+                            if let databaseId = userData["$databaseId"] as? String { userDict["databaseId"] = databaseId }
+                            if let createdAt = userData["$createdAt"] as? String { userDict["createdAt"] = createdAt }
+                            if let updatedAt = userData["$updatedAt"] as? String { userDict["updatedAt"] = updatedAt }
+                            if let permissions = userData["$permissions"] as? [String] { userDict["permissions"] = permissions }
+                            if let userId = userData["userId"] as? String { userDict["userId"] = userId }
+                            if let username = userData["username"] as? String { userDict["username"] = username }
+                            if let name = userData["name"] as? String { userDict["name"] = name }
+                            if let phone = userData["phone"] as? String { userDict["phone"] = phone }
+                            if let avatarId = userData["avatarId"] as? String { userDict["avatarId"] = avatarId }
+                            if let email = userData["email"] as? String { userDict["email"] = email }
+                            
+                            documentDict["users"] = userDict
+                        }
+                        
+                        let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
+                        return try JSONDecoder().decode(Video.self, from: jsonData)
+                    }
+                }
                 
-                // Add video-specific fields
-                if let videoId = document.data["videoId"]?.value as? String {
-                    documentDict["videoId"] = videoId
-                }
-                if let caption = document.data["caption"]?.value as? String {
-                    documentDict["caption"] = caption
-                }
-                if let likes = document.data["likes"]?.value as? [[String: Any]] {
-                    documentDict["likes"] = likes
-                }
-                if let comments = document.data["comments"]?.value as? [[String: Any]] {
-                    documentDict["comments"] = comments
+                // Collect results
+                for try await video in group {
+                    if let video = video {
+                        videos.append(video)
+                    }
                 }
                 
-                // Handle nested user object
-                if let userData = document.data["users"]?.value as? [String: Any] {
-                    print("DEBUG: Found user data in document: \(userData)")
-                    var userDict: [String: Any] = [:]
-                    
-                    // Map the user fields
-                    if let id = userData["$id"] as? String { userDict["id"] = id }
-                    if let collectionId = userData["$collectionId"] as? String { userDict["collectionId"] = collectionId }
-                    if let databaseId = userData["$databaseId"] as? String { userDict["databaseId"] = databaseId }
-                    if let createdAt = userData["$createdAt"] as? String { userDict["createdAt"] = createdAt }
-                    if let updatedAt = userData["$updatedAt"] as? String { userDict["updatedAt"] = updatedAt }
-                    if let permissions = userData["$permissions"] as? [String] { userDict["permissions"] = permissions }
-                    if let userId = userData["userId"] as? String { userDict["userId"] = userId }
-                    if let username = userData["username"] as? String { userDict["username"] = username }
-                    if let name = userData["name"] as? String { userDict["name"] = name }
-                    if let phone = userData["phone"] as? String { userDict["phone"] = phone }
-                    if let avatarId = userData["avatarId"] as? String { userDict["avatarId"] = avatarId }
-                    if let email = userData["email"] as? String { userDict["email"] = email }
-                    
-                    documentDict["users"] = userDict
-                    print("DEBUG: Processed user data: \(userDict)")
-                }
-                
-                let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
-                print("DEBUG: Final document JSON: \(String(data: jsonData, encoding: .utf8) ?? "")")
-                return try JSONDecoder().decode(Video.self, from: jsonData)
+                // Sort by creation date since parallel processing may have changed order
+                return videos.sorted { $0.createdAt > $1.createdAt }
             }
         } catch {
             print("ERROR: Error listing videos with metadata: \(error)")

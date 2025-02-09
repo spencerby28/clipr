@@ -24,9 +24,13 @@ struct ContentView: View {
             } else if !navigationState.hasSeenOnboarding {
                 OnboardingIntroView()
                     .environmentObject(navigationState)
+                  //  .preferredColorScheme(.light)
+                    .background(Color.init(hex: "#FFF8F0"))
             } else {
                 OnboardingFlowView()
                     .environmentObject(navigationState)
+                    .background(Color.init(hex: "#FFF8F0"))
+                  //  .preferredColorScheme(.light)
             }
         }
         // Force the view hierarchy to reset when the auth state changes

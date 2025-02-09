@@ -99,4 +99,9 @@ struct Video: Codable {
     var commentCount: Int {
         return comments?.count ?? 0
     }
+    
+    var thumbnailURL: URL? {
+        guard let videoId = videoId else { return nil }
+        return AppwriteManager.shared.getThumbnailURL(thumbnailId: videoId)
+    }
 }

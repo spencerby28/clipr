@@ -12,6 +12,7 @@
 		092AE3252D51252C0055BDBB /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 092AE3242D51252C0055BDBB /* Preview Assets.xcassets */; };
 		092AE32C2D512A6B0055BDBB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 092AE32B2D512A6B0055BDBB /* GoogleService-Info.plist */; };
 		092AE3782D512E7D0055BDBB /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 092AE3772D512E7D0055BDBB /* Appwrite */; };
+		0964E8CD2D5809140049E2F1 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0964E8CC2D5809140049E2F1 /* HapticManager.swift */; };
 		096E49EB2D5511C600CBCDCC /* DevContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49EA2D5511C600CBCDCC /* DevContentView.swift */; };
 		096E49EF2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49EC2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift */; };
 		096E49F02D5511CE00CBCDCC /* Home.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096E49ED2D5511CE00CBCDCC /* Home.swift */; };
@@ -44,7 +45,6 @@
 		09CB107F2D51663D00AD5446 /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB107E2D51663D00AD5446 /* RecordButton.swift */; };
 		09CB10812D51995700AD5446 /* AppwriteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10802D51995700AD5446 /* AppwriteManager.swift */; };
 		09CB10852D51A46800AD5446 /* VideoConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB10842D51A46800AD5446 /* VideoConversion.swift */; };
-		09E1EEE32D5265D400516887 /* VideoPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */; };
 		09E1EEE82D526C5500516887 /* VideoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE72D526C5500516887 /* VideoCell.swift */; };
 		09E1EEEA2D526E6500516887 /* VideoLoadingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */; };
 		09E1EEED2D52ABFA00516887 /* ColorPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09E1EEEC2D52ABFA00516887 /* ColorPalette.swift */; };
@@ -67,6 +67,7 @@
 		092AE3212D51252C0055BDBB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		092AE3242D51252C0055BDBB /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		092AE32B2D512A6B0055BDBB /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		0964E8CC2D5809140049E2F1 /* HapticManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		096E49EA2D5511C600CBCDCC /* DevContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DevContentView.swift; sourceTree = "<group>"; };
 		096E49EC2D5511CE00CBCDCC /* DevCustomVideoPlayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DevCustomVideoPlayer.swift; sourceTree = "<group>"; };
 		096E49ED2D5511CE00CBCDCC /* Home.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Home.swift; sourceTree = "<group>"; };
@@ -98,7 +99,6 @@
 		09CB107E2D51663D00AD5446 /* RecordButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
 		09CB10802D51995700AD5446 /* AppwriteManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppwriteManager.swift; sourceTree = "<group>"; };
 		09CB10842D51A46800AD5446 /* VideoConversion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoConversion.swift; sourceTree = "<group>"; };
-		09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoPlayerManager.swift; sourceTree = "<group>"; };
 		09E1EEE72D526C5500516887 /* VideoCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoCell.swift; sourceTree = "<group>"; };
 		09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoLoadingManager.swift; sourceTree = "<group>"; };
 		09E1EEEC2D52ABFA00516887 /* ColorPalette.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ColorPalette.swift; sourceTree = "<group>"; };
@@ -195,6 +195,7 @@
 		09E1EEEB2D52ABFA00516887 /* utils */ = {
 			isa = PBXGroup;
 			children = (
+				0964E8CC2D5809140049E2F1 /* HapticManager.swift */,
 				09E1EEF32D52EB9200516887 /* ImagePicker.swift */,
 				09E1EEEC2D52ABFA00516887 /* ColorPalette.swift */,
 			);
@@ -233,7 +234,6 @@
 			isa = PBXGroup;
 			children = (
 				096E4A082D55DD1A00CBCDCC /* sheets */,
-				09E1EEE12D5265D300516887 /* VideoPlayerManager.swift */,
 				09E1EEE92D526E6500516887 /* VideoLoadingManager.swift */,
 				09E1EEE72D526C5500516887 /* VideoCell.swift */,
 				09CB10642D513C5B00AD5446 /* FeedView.swift */,
@@ -394,7 +394,7 @@
 				096E49F12D5511CE00CBCDCC /* ReelView.swift in Sources */,
 				096E49FC2D551A0D00CBCDCC /* ReelLoader.swift in Sources */,
 				09C593752D53DAB00052DCF2 /* VideoSchema.swift in Sources */,
-				09E1EEE32D5265D400516887 /* VideoPlayerManager.swift in Sources */,
+				0964E8CD2D5809140049E2F1 /* HapticManager.swift in Sources */,
 				09CB10792D51538800AD5446 /* CameraPreviewView.swift in Sources */,
 				096E49F02D5511CE00CBCDCC /* Home.swift in Sources */,
 				09E1EEED2D52ABFA00516887 /* ColorPalette.swift in Sources */,
@@ -543,6 +543,7 @@
 				DEVELOPMENT_TEAM = XT8BR8D9KG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "You'll need to allow camera access to take your first Clip. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "To record Clips with audio, you'll need to allow microphone access";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = hi;
@@ -550,14 +551,15 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = spencer.clipr;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.sb28.clipr;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -580,6 +582,7 @@
 				DEVELOPMENT_TEAM = XT8BR8D9KG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "You'll need to allow camera access to take your first Clip. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "To record Clips with audio, you'll need to allow microphone access";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = hi;
@@ -587,14 +590,15 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = spencer.clipr;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.sb28.clipr;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

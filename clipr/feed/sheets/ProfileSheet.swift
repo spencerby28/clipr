@@ -37,6 +37,7 @@ struct ProfileSheet: View {
                     
                     Button(action: {
                         isPresented = false
+                        HapticManager.shared.lightImpact()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
@@ -92,6 +93,7 @@ struct ProfileSheet: View {
                         VStack(spacing: 16) {
                             Button(action: {
                                 showingShareSheet = true
+                                HapticManager.shared.mediumImpact()
                             }) {
                                 HStack {
                                     Image(systemName: "person.badge.plus")
@@ -131,6 +133,7 @@ struct ProfileSheet: View {
                         Button(action: {
                             Task {
                                 try? await appwrite.logout()
+                                HapticManager.shared.heavyImpact()
                                 isPresented = false
                             }
                         }) {

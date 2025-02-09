@@ -68,6 +68,7 @@ struct FeedSelectorBadge: View {
                     selectedFeed = leftOption
                     isExpanded = false
                 }
+                HapticManager.shared.selectionChanged()
             }) {
                 FeedOptionView(feedType: leftOption, isSelected: false, isExpanded: isExpanded)
                     .frame(width: 100)
@@ -81,6 +82,7 @@ struct FeedSelectorBadge: View {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
+                HapticManager.shared.lightImpact()
             }) {
                 FeedOptionView(feedType: selectedFeed, isSelected: true, isExpanded: isExpanded)
                     .frame(width: 100)
@@ -92,6 +94,7 @@ struct FeedSelectorBadge: View {
                     selectedFeed = rightOption
                     isExpanded = false
                 }
+                HapticManager.shared.selectionChanged()
             }) {
                 FeedOptionView(feedType: rightOption, isSelected: false, isExpanded: isExpanded)
                     .frame(width: 100)

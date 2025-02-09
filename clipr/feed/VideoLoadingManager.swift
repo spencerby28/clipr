@@ -10,6 +10,9 @@ class VideoLoadingManager: ObservableObject {
     /// A dictionary of loaded AVPlayers keyed by the index from the feed.
     @Published var loadedVideos: [Int: AVPlayer] = [:]
     
+    /// A dictionary tracking ready state for each video index
+    @Published var playerReadyStates: [Int: Bool] = [:]
+    
     /// A dictionary of video URLs keyed by index. This is populated in setVideos.
     private var videoURLs: [Int: URL] = [:]
     
@@ -25,6 +28,7 @@ class VideoLoadingManager: ObservableObject {
         // Store all URLs first
         for (index, url) in urls.enumerated() {
             videoURLs[index] = url
+            playerReadyStates[index] = false
         }
         
         // Initially load first 3 videos
@@ -48,6 +52,7 @@ class VideoLoadingManager: ObservableObject {
                 if status == .readyToPlay {
                     print("DEBUG: VideoLoadingManager - Player \(index) is ready to play")
                     player.seek(to: .zero)
+                    self?.playerReadyStates[index] = true
                 }
             }
             .store(in: &cancellables)
@@ -73,6 +78,7 @@ class VideoLoadingManager: ObservableObject {
                 player.pause()
                 player.replaceCurrentItem(with: nil)
                 loadedVideos.removeValue(forKey: loadedIndex)
+                playerReadyStates[loadedIndex] = false
             }
         }
         

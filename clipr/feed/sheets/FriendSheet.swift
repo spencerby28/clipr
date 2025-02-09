@@ -47,6 +47,7 @@ struct FriendSheet: View {
                     
                     Button(action: {
                         isPresented = false
+                        HapticManager.shared.lightImpact()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)

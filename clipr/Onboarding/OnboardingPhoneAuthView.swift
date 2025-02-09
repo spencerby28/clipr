@@ -24,20 +24,41 @@ struct OnboardingPhoneAuthView: View {
     
     private func formatPhoneNumber(_ number: String) -> String {
         let cleaned = number.filter { $0.isNumber }
-        var result = ""
+        guard !cleaned.isEmpty else { return "" }
+        
+        var result = "("
         
         for (index, char) in cleaned.prefix(10).enumerated() {
-            if index == 0 {
-                result += "("
-            }
-            result.append(char)
-            if index == 2 {
+            if index == 3 {
                 result += ") "
-            } else if index == 5 {
+            } else if index == 6 {
                 result += "-"
             }
+            result.append(char)
         }
         return result
+    }
+    
+    private func unformatPhoneNumber(_ formatted: String) -> String {
+        return formatted.filter { $0.isNumber }
+    }
+    
+    private func handlePhoneInput(_ newValue: String) -> String {
+        // If deleting, remove formatting first
+        if newValue.count < formattedPhoneNumber.count {
+            let unformatted = unformatPhoneNumber(formattedPhoneNumber)
+            var newUnformatted = unformatted
+            if !newUnformatted.isEmpty {
+                newUnformatted.removeLast()
+            }
+            phoneNumber = newUnformatted
+            return formatPhoneNumber(newUnformatted)
+        }
+        
+        // If adding, just format the numbers
+        let numbers = newValue.filter { $0.isNumber }
+        phoneNumber = numbers
+        return formatPhoneNumber(numbers)
     }
     
     var body: some View {
@@ -84,8 +105,9 @@ struct OnboardingPhoneAuthView: View {
                                     .fill(Color.gray.opacity(0.1))
                             )
                             
-                            TextField("(555) 555-5555", text: $formattedPhoneNumber)
+                            TextField("", text: $formattedPhoneNumber)
                                 .keyboardType(.numberPad)
+                                .foregroundColor(.outerSpace)
                                 .textContentType(.telephoneNumber)
                                 .font(.system(size: 17))
                                 .frame(height: 52)
@@ -98,13 +120,16 @@ struct OnboardingPhoneAuthView: View {
                                 .frame(maxWidth: .infinity)
                                 .focused($isKeyboardShowing)
                                 .onChange(of: formattedPhoneNumber) { newValue in
-                                    let filtered = newValue.filter { $0.isNumber }
-                                    phoneNumber = filtered
-                                    formattedPhoneNumber = formatPhoneNumber(filtered)
+                                    formattedPhoneNumber = handlePhoneInput(newValue)
                                     
-                                    if filtered.count == 10 {
+                                    if phoneNumber.count == 10 {
                                         isKeyboardShowing = false
                                     }
+                                }
+                                .placeholder(when: formattedPhoneNumber.isEmpty) {
+                                    Text("(555) 555-5555")
+                                        .foregroundColor(.outerSpace.opacity(0.5))
+                                        .padding(.leading, 10)
                                 }
                         }
                         .padding(.horizontal, 24)
@@ -187,7 +212,7 @@ struct OnboardingPhoneAuthView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemBackground))
+            .background(Color.init(hex: "#FFF8F0"))
         }
         .onChange(of: otpText) { newValue in
             if newValue.count == 4 {
@@ -380,6 +405,19 @@ extension Binding where Value == String {
             }
         }
         return self
+    }
+}
+
+extension View {
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content) -> some View {
+        
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0)
+            self
+        }
     }
 }
 

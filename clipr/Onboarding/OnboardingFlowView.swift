@@ -19,6 +19,7 @@ struct OnboardingFlowView: View {
                             currentStep = .profileDetails
                         }
                     })
+                    .background(Color.init(hex: "#FFF8F0"))
                     
                 case .profileDetails:
                     OnboardingDetailsView(
@@ -26,7 +27,7 @@ struct OnboardingFlowView: View {
                             print("[OnboardingFlowView.swift] Profile setup completed")
                             navigationState.isLoggedIn = true
                         }
-                    )
+                    )  .background(Color.init(hex: "#FFF8F0"))
                 }
             }
             .navigationBarBackButtonHidden(true)
@@ -51,4 +52,5 @@ struct OnboardingFlowView: View {
 #Preview {
     OnboardingFlowView()
         .environmentObject(NavigationState())
-} 
+        .background(Color.init(hex: "#FFF8F0"))
+}

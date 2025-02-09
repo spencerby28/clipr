@@ -18,6 +18,7 @@ struct FeedActionItems: View {
             Button(action: {
                 showSettingsSheet.toggle()
                 isExpanded = false
+                HapticManager.shared.mediumImpact()
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: "person.2.fill")
@@ -47,6 +48,7 @@ struct FeedActionItems: View {
             Button(action: {
                 showProfileSheet.toggle()
                 isExpanded = false
+                HapticManager.shared.mediumImpact()
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: "person.crop.circle")

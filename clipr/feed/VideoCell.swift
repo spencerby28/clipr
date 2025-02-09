@@ -1,31 +1,124 @@
 import SwiftUI
 import AVKit
+import Kingfisher
 
 struct VideoCell: View {
     let video: FeedViewModel.VideoWithMetadata
     let index: Int
     @ObservedObject var videoManager: VideoLoadingManager
     @State private var isPlaying = false
+    @State private var isVideoLoaded = false
+    @State private var isPulsing = false
     
     var body: some View {
-        ZStack(alignment: .center) {
-            if let url = video.url,
-               let player = videoManager.playerFor(index: index) {
-                CustomVideoPlayer(player: player, isPlaying: $isPlaying)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        GeometryReader { geometry in
+            // Calculate the visible fraction of this cell.
+            let frame = geometry.frame(in: .global)
+            let screenHeight = UIScreen.main.bounds.height
+            let visibleHeight = max(0, min(frame.maxY, screenHeight) - max(frame.minY, 0))
+            let visibility = visibleHeight / geometry.size.height
+            
+            ZStack(alignment: .center) {
+                // Show thumbnail while video is loading
+                if !isVideoLoaded, let thumbnailURL = video.metadata.thumbnailURL {
+                    ZStack(alignment: .bottom) {
+                        KFImage(thumbnailURL)
+                            .placeholder {
+                                Color.black
+                                    .overlay(
+                                        ProgressView()
+                                            .tint(.white)
+                                    )
+                            }
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipped()
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        // Pulsing overlay
+                        Color.black.opacity(isPulsing ? 0.3 : 0.1)
+                            .edgesIgnoringSafeArea(.all)
+                            .animation(
+                                Animation.easeInOut(duration: 0.8)
+                                    .repeatForever(autoreverses: true),
+                                value: isPulsing
+                            )
+                            .onAppear {
+                                isPulsing = true
+                            }
+                            
+                        // Video metadata overlay for thumbnail
+                        if let user = video.metadata.users {
+                            VideoMetadataView(
+                                video: video.metadata,
+                                user: user
+                            )
+                            .opacity(0.7)
+                            .allowsHitTesting(true)
+                        }
+                    }
+                    .frame(maxWidth: geometry.size.width, maxHeight: .infinity)
+                    .edgesIgnoringSafeArea(.all)
+                }
+                
+                if let url = video.url,
+                   let player = videoManager.playerFor(index: index) {
+                    ZStack(alignment: .bottom) {
+                        CustomVideoPlayer(player: player, isPlaying: $isPlaying)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        // Video metadata overlay for video
+                        if let user = video.metadata.users {
+                            VideoMetadataView(
+                                video: video.metadata,
+                                user: user
+                            )
+                            .opacity(isPlaying ? 1 : 0.7)
+                            .animation(.easeInOut(duration: 0.3), value: isPlaying)
+                            .allowsHitTesting(true)
+                        }
+                    }
+                    .frame(maxWidth: geometry.size.width, maxHeight: .infinity)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
-                        // Configure player for looping
+                        // Set up looping for this player.
                         player.actionAtItemEnd = .none
                         NotificationCenter.default.addObserver(
                             forName: .AVPlayerItemDidPlayToEndTime,
                             object: player.currentItem,
                             queue: .main) { _ in
                                 player.seek(to: .zero)
-                                player.play()
+                                // Only play if we are supposed to be playing.
+                                if self.isPlaying {
+                                    player.play()
+                                }
                             }
-                        player.play()
-                        isPlaying = true
+                        
+                        // At initial appearance, decide whether to play
+                        // based on the current visibility.
+                        if visibility > 0.5 {
+                            print("DEBUG: VideoCell \(index) starting play on appear")
+                            player.play()
+                            isPlaying = true
+                        } else {
+                            player.pause()
+                            isPlaying = false
+                        }
+                        
+                        // Observe when the video is ready to play
+                        NotificationCenter.default.addObserver(
+                            forName: .AVPlayerItemNewAccessLogEntry,
+                            object: player.currentItem,
+                            queue: .main) { _ in
+                                if player.currentItem?.status == .readyToPlay {
+                                    withAnimation {
+                                        isVideoLoaded = true
+                                        isPulsing = false
+                                    }
+                                }
+                            }
                     }
                     .onDisappear {
                         NotificationCenter.default.removeObserver(
@@ -33,37 +126,51 @@ struct VideoCell: View {
                             name: .AVPlayerItemDidPlayToEndTime,
                             object: player.currentItem
                         )
+                        NotificationCenter.default.removeObserver(
+                            self,
+                            name: .AVPlayerItemNewAccessLogEntry,
+                            object: player.currentItem
+                        )
                         player.pause()
                         isPlaying = false
+                        isVideoLoaded = false
+                        isPulsing = false
                     }
-                    .contentShape(Rectangle())  // Make the whole area tappable
+                    .contentShape(Rectangle())  // Make entire area tappable.
                     .onTapGesture {
                         isPlaying.toggle()
                         if isPlaying {
+                            print("DEBUG: VideoCell \(index) tapped to play")
                             player.play()
                         } else {
+                            print("DEBUG: VideoCell \(index) tapped to pause")
                             player.pause()
                         }
                     }
-                
-                // Video metadata overlay
-                if let user = video.metadata.users {
-                    VideoMetadataView(
-                        video: video.metadata,
-                        user: user
-                    )
-                    .opacity(isPlaying ? 1 : 0.7)
-                    .animation(.easeInOut(duration: 0.3), value: isPlaying)
-                    .allowsHitTesting(true)  // Enable interaction with metadata view
+                } else {
+                    Color.black
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .edgesIgnoringSafeArea(.all)
+                        .overlay(
+                            Text("Unable to load video")
+                                .foregroundColor(.white)
+                        )
                 }
-            } else {
-                Color.black
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .edgesIgnoringSafeArea(.all)
-                    .overlay(
-                        Text("Unable to load video")
-                            .foregroundColor(.white)
-                    )
+            }
+            // Watch the visibility value and play/pause accordingly.
+            .onChange(of: visibility) { newVisibility in
+                if let url = video.url,
+                   let player = videoManager.playerFor(index: index) {
+                    if newVisibility > 0.5 && !isPlaying {
+                        print("DEBUG: Playing video for cell \(index) due to visibility > 0.5")
+                        player.play()
+                        isPlaying = true
+                    } else if newVisibility <= 0.5 && isPlaying {
+                        print("DEBUG: Pausing video for cell \(index) due to visibility <= 0.5")
+                        player.pause()
+                        isPlaying = false
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

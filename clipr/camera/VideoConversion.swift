@@ -1,4 +1,5 @@
 import AVFoundation
+import UIKit
 
 /// Converts a MOV file at the given URL to MP4 and returns the URL of the converted file.
 /// The output video will be resized to 576 × 1024.
@@ -98,4 +99,40 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
     }
     
     return outputURL
+}
+
+/// Generates a thumbnail image for a given video URL.
+/// Uses a frame at 1 second (by default) and returns a UIImage.
+func generateThumbnail(for videoURL: URL, atTime: CMTime = CMTime(seconds: 1, preferredTimescale: 600)) async throws -> UIImage? {
+    let asset = AVAsset(url: videoURL)
+    let imageGenerator = AVAssetImageGenerator(asset: asset)
+    imageGenerator.appliesPreferredTrackTransform = true
+    return try await withCheckedThrowingContinuation { continuation in
+        DispatchQueue.global().async {
+            do {
+                let cgImage = try imageGenerator.copyCGImage(at: atTime, actualTime: nil)
+                let image = UIImage(cgImage: cgImage)
+                
+                // Compress the image
+                guard let compressedData = image.jpegData(compressionQuality: 0.3),
+                      let compressedImage = UIImage(data: compressedData) else {
+                    continuation.resume(returning: image) // Fallback to original if compression fails
+                    return
+                }
+                
+                continuation.resume(returning: compressedImage)
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+}
+
+/// Convenience method for converting MOV to MP4 and also generating a thumbnail
+func convertMovToMp4AndGenerateThumbnail(inputURL: URL) async throws -> (videoURL: URL, thumbnail: UIImage) {
+    let videoURL = try await convertMovToMp4(inputURL: inputURL)
+    guard let thumbnail = try await generateThumbnail(for: videoURL) else {
+         throw NSError(domain: "VideoConversion", code: -5, userInfo: [NSLocalizedDescriptionKey: "Failed to generate thumbnail"])
+    }
+    return (videoURL, thumbnail)
 } 

@@ -436,15 +436,16 @@ class CameraManager: NSObject, ObservableObject {
         let startTime = Date()
         print("📤 Starting video upload process at: \(startTime)")
         do {
-            print("🔄 Converting MOV to MP4...")
+            print("🔄 Converting MOV to MP4 and generating thumbnail...")
             progressCallback(0.1) // Started conversion
-            let mp4URL = try await convertMovToMp4(inputURL: videoURL)
-            print("✅ MOV to MP4 conversion completed at: \(Date())")
+            let (mp4URL, thumbnail) = try await convertMovToMp4AndGenerateThumbnail(inputURL: videoURL)
+            print("✅ MOV to MP4 conversion and thumbnail generation completed at: \(Date())")
             
             progressCallback(0.3) // Conversion complete
             
             print("📤 Uploading to Appwrite...")
             let fileId = try await AppwriteManager.shared.uploadVideo(fileURL: mp4URL)
+            let _ = try await AppwriteManager.shared.uploadThumbnail(thumbnailData: thumbnail.pngData()!, videoId: fileId)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             print("✅ Video upload completed at: \(endTime)")
