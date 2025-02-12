@@ -102,15 +102,19 @@ func convertMovToMp4(inputURL: URL) async throws -> URL {
 }
 
 /// Generates a thumbnail image for a given video URL.
-/// Uses a frame at 1 second (by default) and returns a UIImage.
-func generateThumbnail(for videoURL: URL, atTime: CMTime = CMTime(seconds: 1, preferredTimescale: 600)) async throws -> UIImage? {
+/// Uses the first frame of the video and returns a UIImage.
+func generateThumbnail(for videoURL: URL) async throws -> UIImage? {
     let asset = AVAsset(url: videoURL)
     let imageGenerator = AVAssetImageGenerator(asset: asset)
     imageGenerator.appliesPreferredTrackTransform = true
+    
+    // Get the first frame at time 0
+    let firstFrameTime = CMTime.zero
+    
     return try await withCheckedThrowingContinuation { continuation in
         DispatchQueue.global().async {
             do {
-                let cgImage = try imageGenerator.copyCGImage(at: atTime, actualTime: nil)
+                let cgImage = try imageGenerator.copyCGImage(at: firstFrameTime, actualTime: nil)
                 let image = UIImage(cgImage: cgImage)
                 
                 // Compress the image

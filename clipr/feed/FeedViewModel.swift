@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Kingfisher
 
 class FeedViewModel: ObservableObject {
     @Published var videos: [VideoWithMetadata] = []
@@ -17,13 +18,10 @@ class FeedViewModel: ObservableObject {
     private var isLoadingMore = false
     private var videoManager: VideoLoadingManager?
     
-    init() {
-        print("DEBUG: FeedViewModel - Initialized")
-    }
+    init() {}
     
     func setVideoManager(_ manager: VideoLoadingManager) {
         self.videoManager = manager
-        print("DEBUG: FeedViewModel - VideoManager connected")
     }
     
     struct VideoWithMetadata: Identifiable {
@@ -55,78 +53,90 @@ class FeedViewModel: ObservableObject {
             }
         }
     }
+    
+    @MainActor
+    func preloadThumbnails(startIndex: Int) {
+        let endIndex = min(startIndex + 10, videos.count)
+        let batchUrls = videos[startIndex..<endIndex]
+            .compactMap { $0.metadata.thumbnailURL }
+        
+        if !batchUrls.isEmpty {
+            print("🖼️ Feed: Preloading thumbnails \(startIndex)-\(endIndex-1)")
+            
+            let prefetcher = ImagePrefetcher(
+                urls: batchUrls,
+                options: [
+                    .backgroundDecode,
+                    .loadDiskFileSynchronously,
+                ], completionHandler:  { skippedResources, failedResources, completedResources in
+                    if !failedResources.isEmpty {
+                        print("⚠️ Feed: Failed to load \(failedResources.count) thumbnails")
+                    }
+                })
+            prefetcher.start()
+        }
+    }
+    
     @MainActor
     func loadVideos(refresh: Bool = false) async {
         guard let videoManager = videoManager else {
-            print("DEBUG: FeedViewModel - Cannot load videos, videoManager not set")
+            print("❌ Feed: Cannot load videos - no video manager")
             return
         }
         
-        print("DEBUG: FeedViewModel - loadVideos called. Refresh: \(refresh), Current page: \(currentPage), HasMoreContent: \(hasMoreContent), IsLoadingMore: \(isLoadingMore)")
-
         if refresh {
+            print("🔄 Feed: Refreshing feed")
             currentPage = 1
             videos = []
             hasMoreContent = true
-            print("DEBUG: FeedViewModel - Refresh triggered. Reset state: page=1, videos=[], hasMoreContent=true")
         }
         
-        guard hasMoreContent && !isLoadingMore else {
-            print("DEBUG: FeedViewModel - Skipping load. hasMoreContent=\(hasMoreContent), isLoadingMore=\(isLoadingMore)")
-            return
-        }
+        guard hasMoreContent && !isLoadingMore else { return }
         
         isLoadingMore = true
         
         if videos.isEmpty {
             loadingState = .loading
-            print("DEBUG: FeedViewModel - Videos array empty, setting loadingState to .loading")
         }
         
         do {
-            print("DEBUG: FeedViewModel - Fetching videos from AppwriteManager. Page: \(currentPage), Offset: \((currentPage - 1) * pageSize)")
+            print("📥 Feed: Loading page \(currentPage)")
             let newVideos = try await AppwriteManager.shared.listVideosWithMetadata(
                 limit: pageSize,
                 offset: (currentPage - 1) * pageSize
             )
             
-            print("DEBUG: FeedViewModel - Received \(newVideos.count) new videos")
-            
-            let videoWithMetadata = newVideos.map { video in
-                print("DEBUG: FeedViewModel - Creating VideoWithMetadata for video ID: \(video.id)")
-                return VideoWithMetadata(
-                    id: video.id,
-                    metadata: video
-                )
-            }
-            
             await MainActor.run {
                 if refresh {
-                    print("DEBUG: FeedViewModel - Replacing videos array with \(videoWithMetadata.count) new videos")
-                    self.videos = videoWithMetadata
+                    print("✨ Feed: Replacing with \(newVideos.count) new videos")
+                    self.videos = newVideos.map { VideoWithMetadata(id: $0.id, metadata: $0) }
+                    preloadThumbnails(startIndex: 0)
                 } else {
-                    print("DEBUG: FeedViewModel - Appending \(videoWithMetadata.count) videos to existing \(self.videos.count) videos")
-                    self.videos.append(contentsOf: videoWithMetadata)
+                    print("✨ Feed: Appending \(newVideos.count) videos")
+                    self.videos.append(contentsOf: newVideos.map { VideoWithMetadata(id: $0.id, metadata: $0) })
+                    preloadThumbnails(startIndex: self.videos.count - newVideos.count)
                 }
                 
                 self.currentPage += 1
-                self.hasMoreContent = videoWithMetadata.count == pageSize
+                self.hasMoreContent = newVideos.count == pageSize
                 self.loadingState = .loaded
                 self.isLoadingMore = false
                 
-                print("DEBUG: FeedViewModel - State updated: page=\(self.currentPage), hasMore=\(self.hasMoreContent), state=.loaded")
-                
                 // Update VideoLoadingManager with ALL video URLs
                 let allUrls = self.videos.compactMap { $0.url }
-                print("DEBUG: FeedViewModel - Setting \(allUrls.count) URLs in VideoLoadingManager")
                 videoManager.setVideos(allUrls)
             }
         } catch {
             await MainActor.run {
-                print("ERROR: FeedViewModel - Failed to load videos: \(error.localizedDescription)")
+                print("❌ Feed: Failed to load videos - \(error.localizedDescription)")
                 self.loadingState = .error(error.localizedDescription)
                 self.isLoadingMore = false
             }
         }
     }
+    
+    deinit {
+        // No need for cleanup since we're not storing the prefetcher
+    }
 }
+

@@ -8,8 +8,28 @@
 import SwiftUI
 import UserNotifications
 
+class NavigationCoordinator {
+    static let shared = NavigationCoordinator()
+    
+    private init() {
+        // Initialize with the shared NavigationState
+        self.navigationState = NavigationState.shared
+    }
+    
+    // Using non-optional navigationState since we know it will always exist
+    var navigationState: NavigationState
+    
+    func navigateToCamera() {
+        DispatchQueue.main.async {
+            print("NavigationCoordinator attempting to navigate to camera")
+            self.navigationState.navigateTo(.camera)
+            print("Navigation executed")
+        }
+    }
+}
+
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    var navigationState: NavigationState?
+    var app: cliprApp?
     
     func application(_ application: UIApplication,
                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
@@ -31,7 +51,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         ///shows alert even when app is active
-        return [.sound, .banner]
+        return [.sound, .banner, .list]
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
@@ -40,7 +60,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         var pageData: String?
         
-        // Extract pageData from aps dictionary
         if let aps = userInfo["aps"] as? [String: Any],
            let data = aps["data"] as? [String: Any],
            let pageDataValue = data["pageData"] as? String {
@@ -49,14 +68,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         if let pageData = pageData {
             print("pageData = ", pageData)
-            await MainActor.run {
-                switch pageData {
-                case "camera":
-                    navigationState?.navigateTo(.camera)
-                    print("attempting to nav to camera")
-                default:
-                    break
-                }
+            switch pageData {
+            case "camera":
+                NavigationCoordinator.shared.navigateToCamera()
+                print("attempting to nav to camera")
+            default:
+                break
             }
         } else {
             print("No pageData found in notification")
@@ -92,28 +109,60 @@ class NotificationManager: ObservableObject {
             UIApplication.shared.registerForRemoteNotifications()
         }
     }
+    
+    
+    func testLocalNotificationWithSound() {
+        let content = UNMutableNotificationContent()
+        content.title = "Test Sound"
+        content.body = "Testing custom sound"
+        
+        // Create sound with more detailed error checking
+        let soundName = "stab.caf"
+        let sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
+        content.sound = sound
+        
+        // Print bundle information for debugging
+        if let soundURL = Bundle.main.url(forResource: "stab", withExtension: "caf") {
+            print("Sound file found at: \(soundURL)")
+        } else {
+            print("⚠️ Sound file not found in bundle!")
+        }
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                          content: content,
+                                          trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling notification: \(error)")
+            } else {
+                print("Notification scheduled successfully with sound: \(soundName)")
+            }
+        }
+    }
 }
 
 @main
-struct cliprApp: App {
+class cliprApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
-    @StateObject private var navigationState = NavigationState()
+    @StateObject private var navigationState = NavigationState.shared
     @StateObject private var videoManager = VideoLoadingManager.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     
-    init() {
-        appDelegate.navigationState = navigationState
+    required init() {
+        appDelegate.app = self
     }
     
     var body: some Scene {
         WindowGroup {
             NavigationView {
                 ContentView()
-            }
-            .environmentObject(navigationState)
-            .environmentObject(videoManager)
-            .task {
-                notificationManager.requestAuthorization()
+                    .environmentObject(navigationState)
+                    .environmentObject(videoManager)
+                    .task {
+                        self.notificationManager.requestAuthorization()
+                    }
             }
         }
     }

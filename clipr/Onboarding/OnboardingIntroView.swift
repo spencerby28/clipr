@@ -82,5 +82,5 @@ struct OnboardingIntroView: View {
 
 #Preview {
     OnboardingIntroView()
-        .environmentObject(NavigationState())
+        .environmentObject(NavigationState.shared)
 } 

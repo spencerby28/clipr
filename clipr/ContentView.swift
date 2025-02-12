@@ -43,5 +43,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(NavigationState())
+        .environmentObject(NavigationState.shared)
 }

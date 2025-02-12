@@ -387,7 +387,7 @@ struct OnboardingPhoneAuthView: View {
     private func createAppwriteSession() {
         Task {
             do {
-                try await AppwriteManager.shared.onPhoneLogin(userId: userId, secret: secret)
+                try await AppwriteManager.shared.onPhoneLogin(userId: userId, secret: secret, phoneNumber: phoneNumber)
                 print("✅ Appwrite session created successfully")
                 
                 // Try to load the current user profile

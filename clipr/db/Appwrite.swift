@@ -83,7 +83,8 @@ class Appwrite {
     }
     public func onPhoneLogin(
         _ userId: String,
-        _ secret: String
+        _ secret: String,
+        _ phoneNumber: String
     ) async throws -> Session {
         print("📱 Attempting phone login - User ID: \(userId)")
         print("🔑 Raw secret: \(secret)")
@@ -111,6 +112,28 @@ class Appwrite {
                 userId: userId,
                 secret: secretResponse.secret
             )
+            print("📱 Checking for existing user with phone number: \(phoneNumber)")
+            let existingUser = try await databases.listDocuments(
+                databaseId: "clips", 
+                collectionId: "users", 
+                queries: [Query.contains("phone", value: phoneNumber)]
+            )
+            
+            if !existingUser.documents.isEmpty {
+                let existingUserId = existingUser.documents[0].data["userId"] as? String
+                if existingUserId != userId {
+                    print("📝 Found existing user with different userId, updating...")
+                    try await databases.updateDocument(
+                        databaseId: "clips",
+                        collectionId: "users", 
+                        documentId: existingUser.documents[0].id,
+                        data: ["userId": userId]
+                    )
+                    print("✅ Successfully updated existing user document")
+                } else {
+                    print("ℹ️ Existing user already has correct userId")
+                }
+            }
             print("✅ Session created successfully")
             return session
         } catch {

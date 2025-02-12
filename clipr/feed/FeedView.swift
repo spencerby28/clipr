@@ -20,7 +20,7 @@ struct FeedView: View {
             ZStack {
                 switch viewModel.loadingState {
                 case .idle, .loading:
-                    Text("LOADING / IDLE: \(viewModel.videos.count) videos")
+                    LoadingView()
                 case .error(let msg):
                     Text("ERROR: \(msg)")
                 case .loaded:
@@ -34,10 +34,10 @@ struct FeedView: View {
                                         .edgesIgnoringSafeArea(.all)
                                         .id(index)
                                         .onAppear {
-                                            print("DEBUG: FeedView - Video cell \(index) appeared")
+                                            print("DEBUG: FeedView - Video cell \(index) appeared, total videos: \(viewModel.videos.count)")
                                             // Only trigger loading if we're within bounds and near the end
                                             if index >= viewModel.videos.count - 3 && index < viewModel.videos.count {
-                                                print("DEBUG: FeedView - Triggering load more videos at index \(index)")
+                                                print("DEBUG: FeedView - Near end of feed (index \(index)), triggering load of more videos")
                                                 Task {
                                                     await viewModel.loadVideos()
                                                 }
@@ -110,25 +110,45 @@ struct FeedView: View {
     }
     
     private func handleScrollPositionChange(oldValue: Int?, newValue: Int?) {
-        guard let index = newValue else { return }
+        guard let index = newValue else { 
+            print("DEBUG: FeedView - Scroll position changed but new index is nil")
+            return 
+        }
+        
+        print("DEBUG: FeedView - Scroll position changed from \(String(describing: oldValue)) to \(index)")
         
         // Pause all videos except current
         videoManager.pauseAllExcept(index: index)
+        print("DEBUG: FeedView - Paused all videos except index \(index)")
         
         // Preload adjacent videos
         videoManager.preloadVideosAround(index: index)
+        print("DEBUG: FeedView - Triggered preloading around index \(index)")
     }
 }
 
 // MARK: - Supporting Views
 
 struct LoadingView: View {
+    @State private var rotation: Double = 0
+    
     var body: some View {
         VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Loading videos...")
-                .foregroundColor(.secondary)
+            Image("clipr-trans")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 200, height: 200)
+                .rotationEffect(.degrees(rotation))
+                .preferredColorScheme(.light)
+                .onAppear {
+                    // Start rotation after 0.5s delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: false)) {
+                            rotation = 360
+                        }
+                    }
+                }
+
         }
     }
 }
@@ -213,6 +233,7 @@ struct FeedView_Previews: View {
 }
 
 #Preview {
-    FeedView_Previews()
-        .preferredColorScheme(.dark)
+   // FeedView_Previews()
+     //   .preferredColorScheme(.dark)
+    LoadingView()
 }

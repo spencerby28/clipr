@@ -58,6 +58,6 @@ struct OnboardingFlowView: View {
 
 #Preview {
     OnboardingFlowView()
-        .environmentObject(NavigationState())
+        .environmentObject(NavigationState.shared)
         .background(Color.init(hex: "#FFF8F0"))
 }

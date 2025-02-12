@@ -49,7 +49,8 @@ struct VideoCell: View {
                                 value: isPulsing
                             )
                             .onAppear {
-                                print("DEBUG: VideoCell \(index) - Player view appeared, with thmbail")
+                                // Only log initial appearance
+                                print("🎥 Cell \(index): Appeared with thumbnail")
                                 isPulsing = true
                             }
                             
@@ -88,31 +89,24 @@ struct VideoCell: View {
                     .frame(maxWidth: geometry.size.width, maxHeight: .infinity)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
-                        print("DEBUG: VideoCell \(index) - Player view appeared")
+                        print("🎥 Cell \(index): Player ready")
+                        
                         // Set up looping for this player.
                         player.actionAtItemEnd = .none
                         NotificationCenter.default.addObserver(
                             forName: .AVPlayerItemDidPlayToEndTime,
                             object: player.currentItem,
                             queue: .main) { _ in
-                                print("DEBUG: VideoCell \(index) - Video reached end, looping")
                                 player.seek(to: .zero)
-                                // Only play if we are supposed to be playing.
                                 if self.isPlaying {
                                     player.play()
                                 }
                             }
                         
-                        // At initial appearance, decide whether to play
-                        // based on the current visibility.
                         if visibility > 0.5 {
-                            print("DEBUG: VideoCell \(index) starting play on appear with visibility \(visibility)")
+                            print("▶️ Cell \(index): Auto-playing (visibility: \(String(format: "%.2f", visibility)))")
                             player.play()
                             isPlaying = true
-                        } else {
-                            print("DEBUG: VideoCell \(index) not playing on appear due to low visibility \(visibility)")
-                            player.pause()
-                            isPlaying = false
                         }
                         
                         // Observe when the video is ready to play
@@ -121,7 +115,7 @@ struct VideoCell: View {
                             object: player.currentItem,
                             queue: .main) { _ in
                                 if player.currentItem?.status == .readyToPlay {
-                                    print("DEBUG: VideoCell \(index) - Video ready to play, transitioning from thumbnail")
+                                    print("✅ Cell \(index): Video loaded")
                                     withAnimation {
                                         isVideoLoaded = true
                                         isPulsing = false
@@ -130,7 +124,7 @@ struct VideoCell: View {
                             }
                     }
                     .onDisappear {
-                        print("DEBUG: VideoCell \(index) - Player view disappeared")
+                        print("🎥 Cell \(index): Disappeared")
                         NotificationCenter.default.removeObserver(
                             self,
                             name: .AVPlayerItemDidPlayToEndTime,
@@ -146,14 +140,14 @@ struct VideoCell: View {
                         isVideoLoaded = false
                         isPulsing = false
                     }
-                    .contentShape(Rectangle())  // Make entire area tappable.
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         isPlaying.toggle()
                         if isPlaying {
-                            print("DEBUG: VideoCell \(index) tapped to play")
+                            print("▶️ Cell \(index): Manual play")
                             player.play()
                         } else {
-                            print("DEBUG: VideoCell \(index) tapped to pause")
+                            print("⏸️ Cell \(index): Manual pause")
                             player.pause()
                         }
                     }
@@ -172,11 +166,11 @@ struct VideoCell: View {
                 if let url = video.url,
                    let player = videoManager.playerFor(index: index) {
                     if newVisibility > 0.5 && !isPlaying {
-                        print("DEBUG: Playing video for cell \(index) due to visibility > 0.5")
+                        print("▶️ Cell \(index): Auto-playing on visibility change (\(String(format: "%.2f", newVisibility)))")
                         player.play()
                         isPlaying = true
                     } else if newVisibility <= 0.5 && isPlaying {
-                        print("DEBUG: Pausing video for cell \(index) due to visibility <= 0.5")
+                        print("⏸️ Cell \(index): Auto-pausing on visibility change (\(String(format: "%.2f", newVisibility)))")
                         player.pause()
                         isPlaying = false
                     }

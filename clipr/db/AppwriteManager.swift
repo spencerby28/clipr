@@ -587,9 +587,9 @@ class AppwriteManager: ObservableObject {
         }
     }
 
-    func onPhoneLogin(userId: String, secret: String) async throws {
+    func onPhoneLogin(userId: String, secret: String, phoneNumber: String) async throws {
         do {
-            _ = try await appwrite.onPhoneLogin(userId, secret)
+            _ = try await appwrite.onPhoneLogin(userId, secret, phoneNumber)
             
             // Register push target if we have a token
             if let token = UserDefaults.standard.string(forKey: "apnsToken") {

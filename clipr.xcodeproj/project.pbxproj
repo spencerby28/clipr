@@ -31,6 +31,9 @@
 		09C593752D53DAB00052DCF2 /* VideoSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593742D53DAB00052DCF2 /* VideoSchema.swift */; };
 		09C593772D53DB1B0052DCF2 /* VideoMetadataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */; };
 		09C593792D53DB5D0052DCF2 /* UserSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C593782D53DB5D0052DCF2 /* UserSchema.swift */; };
+		09CA7E502D5C8090000931FF /* stab.caf in Resources */ = {isa = PBXBuildFile; fileRef = 09CA7E4F2D5C8090000931FF /* stab.caf */; };
+		09CA7E522D5C8199000931FF /* mega-stab.caf in Resources */ = {isa = PBXBuildFile; fileRef = 09CA7E512D5C8199000931FF /* mega-stab.caf */; };
+		09CA7E542D5C8408000931FF /* chime.caf in Resources */ = {isa = PBXBuildFile; fileRef = 09CA7E532D5C8408000931FF /* chime.caf */; };
 		09CB10672D513C5B00AD5446 /* NavigationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB105B2D513C5A00AD5446 /* NavigationState.swift */; };
 		09CB10692D513C5B00AD5446 /* cliprApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB105E2D513C5B00AD5446 /* cliprApp.swift */; };
 		09CB106A2D513C5B00AD5446 /* Appwrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CB105F2D513C5B00AD5446 /* Appwrite.swift */; };
@@ -90,6 +93,9 @@
 		09C593742D53DAB00052DCF2 /* VideoSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSchema.swift; sourceTree = "<group>"; };
 		09C593762D53DB1B0052DCF2 /* VideoMetadataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoMetadataView.swift; sourceTree = "<group>"; };
 		09C593782D53DB5D0052DCF2 /* UserSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserSchema.swift; sourceTree = "<group>"; };
+		09CA7E4F2D5C8090000931FF /* stab.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = stab.caf; sourceTree = "<group>"; };
+		09CA7E512D5C8199000931FF /* mega-stab.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "mega-stab.caf"; sourceTree = "<group>"; };
+		09CA7E532D5C8408000931FF /* chime.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chime.caf; sourceTree = "<group>"; };
 		09CB105B2D513C5A00AD5446 /* NavigationState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NavigationState.swift; sourceTree = "<group>"; };
 		09CB105E2D513C5B00AD5446 /* cliprApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = cliprApp.swift; sourceTree = "<group>"; };
 		09CB105F2D513C5B00AD5446 /* Appwrite.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Appwrite.swift; sourceTree = "<group>"; };
@@ -168,12 +174,15 @@
 				09E1EEEE2D52AC3C00516887 /* db */,
 				09E1EEEB2D52ABFA00516887 /* utils */,
 				09CB105E2D513C5B00AD5446 /* cliprApp.swift */,
+				09CA7E532D5C8408000931FF /* chime.caf */,
+				09CA7E512D5C8199000931FF /* mega-stab.caf */,
 				092AE31F2D51252A0055BDBB /* ContentView.swift */,
 				09CB10612D513C5B00AD5446 /* MainTabView.swift */,
 				09CB105B2D513C5A00AD5446 /* NavigationState.swift */,
 				09CB10632D513C5B00AD5446 /* ProfileView.swift */,
 				092AE32B2D512A6B0055BDBB /* GoogleService-Info.plist */,
 				092AE3212D51252C0055BDBB /* Assets.xcassets */,
+				09CA7E4F2D5C8090000931FF /* stab.caf */,
 				092AE3232D51252C0055BDBB /* Preview Content */,
 			);
 			path = clipr;
@@ -366,8 +375,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				09CA7E522D5C8199000931FF /* mega-stab.caf in Resources */,
 				092AE3252D51252C0055BDBB /* Preview Assets.xcassets in Resources */,
 				092AE3222D51252C0055BDBB /* Assets.xcassets in Resources */,
+				09CA7E542D5C8408000931FF /* chime.caf in Resources */,
+				09CA7E502D5C8090000931FF /* stab.caf in Resources */,
 				092AE32C2D512A6B0055BDBB /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

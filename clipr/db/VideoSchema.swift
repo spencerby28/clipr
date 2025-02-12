@@ -92,6 +92,7 @@ struct Video: Codable {
     }
     
     var thumbnailURL: URL? {
-        return AppwriteManager.shared.getThumbnailURL(thumbnailId: id)
+        guard let videoId else {return nil}
+        return AppwriteManager.shared.getThumbnailURL(thumbnailId: videoId)
     }
 }

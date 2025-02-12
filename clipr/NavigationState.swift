@@ -1,6 +1,8 @@
 import SwiftUI
 
 class NavigationState: ObservableObject {
+    static let shared = NavigationState()
+    
     enum Tab: Int {
         case feed = 0
         case camera = 1
@@ -19,7 +21,7 @@ class NavigationState: ObservableObject {
     @Published var showTabMenu: Bool = false
     private let appwrite = Appwrite()
     
-    init() {
+    private init() {
         // Load saved login state
         self.isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
         
