@@ -18,7 +18,7 @@ class Appwrite {
     
     public init() {
         self.client = Client()
-            .setEndpoint("https://appwrite.sb28.xyz/v1")
+            .setEndpoint("https://aw.clipr.vip/v1")
             .setProject("clipr")
             .setSelfSigned()
         
@@ -141,7 +141,7 @@ class Appwrite {
 
     
 public func getFileViewURL(bucketId: String, fileId: String) -> URL? {
-        let endpoint = "https://appwrite.sb28.xyz/v1"
+        let endpoint = "https://aw.clipr.vip/v1"
         let urlString = "\(endpoint)/storage/buckets/\(bucketId)/files/\(fileId)/view?project=clipr"
         return URL(string: urlString)
 }

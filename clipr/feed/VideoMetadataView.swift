@@ -38,6 +38,14 @@ struct VideoMetadataView: View {
         self.video = video
         self.user = user
         _likeCount = State(initialValue: video.likeCount)
+        
+        // Check if current user has already liked the video
+        if let currentUser = AppwriteManager.shared.currentUser,
+           let likes = video.likes {
+            _isLiked = State(initialValue: likes.contains { like in
+                like.userId == currentUser.userId
+            })
+        }
     }
     
     var body: some View {
@@ -55,16 +63,6 @@ struct VideoMetadataView: View {
                         .animation(transitionSpring, value: -offset > smallHeight)
                     
                     VStack(spacing: 0) {
-                        // Grabber
-                        /*
-                        Capsule()
-                            .fill(Color.white.opacity(0.5))
-                            .frame(width: 36, height: 4)
-                            .padding(.top, 6)
-                            .padding(.bottom, 4)
-                            .contentShape(Rectangle())
-                         */
-                        
                         // Metadata content
                         HStack(alignment: .center, spacing: 12) {
                             // Left side - Profile pic and info
@@ -129,15 +127,31 @@ struct VideoMetadataView: View {
                                 .animation(transitionSpring, value: -offset > smallHeight)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(transitionSpring) {
+                                    if offset == 0 {
+                                        offset = -mediumHeight
+                                    } else {
+                                        offset = 0
+                                    }
+                                    lastOffset = offset
+                                }
+                            }
                             
-                            // Right side - Stats
+                            // Right side - Stats (now without tap gesture)
                             HStack(spacing: 16) {
                                 Button(action: {
-                                    withAnimation(transitionSpring) {
-                                        isLiked.toggle()
-                                        likeCount += isLiked ? 1 : -1
-                                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                                        generator.impactOccurred()
+                                    Task {
+                                        do {
+                                            _ = try await FeedActions.shared.addLikeToClip(clipId: video.id)
+                                            isLiked.toggle()
+                                            likeCount += isLiked ? 1 : -1
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        } catch {
+                                            print("Error liking video: \(error)")
+                                        }
                                     }
                                 }) {
                                     VStack(spacing: 2) {
@@ -151,22 +165,15 @@ struct VideoMetadataView: View {
                                     }
                                 }
                                 
-                                Button(action: {
-                                    withAnimation(transitionSpring) {
-                                        isCommenting = true
-                                        offset = -commentHeight
-                                        lastOffset = offset
-                                    }
-                                }) {
-                                    VStack(spacing: 2) {
-                                        Image(systemName: "bubble.right.fill")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(.white)
-                                        Text("\(video.commentCount)")
-                                            .font(.system(size: 11))
-                                            .bold()
-                                            .foregroundColor(.white)
-                                    }
+                                // Comment count display
+                                VStack(spacing: 2) {
+                                    Image(systemName: "bubble.right.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.white)
+                                    Text("\(video.commentCount)")
+                                        .font(.system(size: 11))
+                                        .bold()
+                                        .foregroundColor(.white)
                                 }
                             }
                             .animation(transitionSpring, value: -offset > smallHeight)
@@ -239,19 +246,6 @@ struct VideoMetadataView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .simultaneousGesture(
-                    TapGesture()
-                        .onEnded { _ in
-                            withAnimation(transitionSpring) {
-                                if offset == 0 {
-                                    offset = -mediumHeight
-                                } else {
-                                    offset = 0
-                                }
-                                lastOffset = offset
-                            }
-                        }
-                )
                 .simultaneousGesture(
                     DragGesture()
                         .updating($gestureOffset) { value, out, _ in
@@ -382,6 +376,7 @@ extension Video {
             createdAt: "2024-02-05T12:00:00.000Z",
             updatedAt: "2024-02-05T12:00:00.000Z",
             permissions: ["read"],
+            created: "2024-02-05T12:00:00.000Z",
             caption: "Check out this amazing video! 🎥 #trending #viral",
             likes: [],
             comments: [],

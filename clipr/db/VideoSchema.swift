@@ -8,24 +8,12 @@
 import Foundation
 
 struct Like: Codable {
-    let id: String
-    let collectionId: String
-    let databaseId: String
-    let createdAt: String
-    let updatedAt: String
-    let permissions: [String]
-    let userId: String?
+    let userId: String
 }
 
 struct Comment: Codable {
-    let id: String
-    let collectionId: String
-    let databaseId: String
-    let createdAt: String
-    let updatedAt: String
-    let permissions: [String]
-    let userId: String?
-    let comment: String?
+    let userId: String
+    let comment: String
 }
 
 // For database operations - minimal data needed for storage
@@ -36,6 +24,7 @@ struct VideoDocument: Codable {
     let createdAt: String
     let updatedAt: String
     let permissions: [String]
+    let created: String
     let caption: String?
     let likes: [Like]?
     let comments: [Comment]?
@@ -53,6 +42,7 @@ struct Video: Codable {
     let permissions: [String]
     
     // Video specific fields
+    let created: String
     let caption: String?
     let likes: [Like]?
     let comments: [Comment]?
@@ -67,6 +57,7 @@ struct Video: Codable {
         self.createdAt = document.createdAt
         self.updatedAt = document.updatedAt
         self.permissions = document.permissions
+        self.created = document.created
         self.caption = document.caption
         self.likes = document.likes
         self.comments = document.comments
@@ -76,14 +67,14 @@ struct Video: Codable {
     
     enum CodingKeys: String, CodingKey {
         case id, collectionId, databaseId, createdAt, updatedAt, permissions
-        case caption, likes, comments, videoId, users
+        case caption, likes, comments, videoId, users, created
     }
     
     var timeAgo: String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
         
-        guard let date = dateFormatter.date(from: createdAt) else {
+        guard let date = dateFormatter.date(from: created) else {
             return "Invalid date"
         }
         
@@ -101,7 +92,6 @@ struct Video: Codable {
     }
     
     var thumbnailURL: URL? {
-        guard let videoId = videoId else { return nil }
-        return AppwriteManager.shared.getThumbnailURL(thumbnailId: videoId)
+        return AppwriteManager.shared.getThumbnailURL(thumbnailId: id)
     }
 }

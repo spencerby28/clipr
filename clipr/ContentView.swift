@@ -13,24 +13,24 @@ class ViewModel: ObservableObject {
 }
 
 struct ContentView: View {
-    @StateObject private var navigationState = NavigationState()
+    @EnvironmentObject var navigationState: NavigationState
     
     var body: some View {
         Group {
             if navigationState.isLoggedIn {
                 MainTabView()
                     .environmentObject(navigationState)
-                     .persistentSystemOverlays(.hidden)
+                    .persistentSystemOverlays(.hidden)
             } else if !navigationState.hasSeenOnboarding {
                 OnboardingIntroView()
                     .environmentObject(navigationState)
-                  //  .preferredColorScheme(.light)
+                    //.preferredColorScheme(.light)
                     .background(Color.init(hex: "#FFF8F0"))
             } else {
                 OnboardingFlowView()
                     .environmentObject(navigationState)
+                    //.preferredColorScheme(.light)
                     .background(Color.init(hex: "#FFF8F0"))
-                  //  .preferredColorScheme(.light)
             }
         }
         // Force the view hierarchy to reset when the auth state changes
@@ -43,4 +43,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(NavigationState())
 }

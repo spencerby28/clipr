@@ -14,15 +14,40 @@ class AppwriteManager: ObservableObject {
     
     public let appwrite: Appwrite
     private var usernameCheckCancellable: AnyCancellable?
-    @Published var isAuthenticated = false
+    @Published var isAuthenticated = false {
+        didSet {
+            UserDefaults.standard.set(isAuthenticated, forKey: "isAuthenticated")
+        }
+    }
     @Published var isUsernameAvailable: Bool?
     @Published var isCheckingUsername = false
-    @Published var currentUser: UserProfile?
+    @Published var currentUser: UserProfile? {
+        didSet {
+            if let user = currentUser {
+                // Encode and save user to UserDefaults
+                if let encoded = try? JSONEncoder().encode(user) {
+                    UserDefaults.standard.set(encoded, forKey: "cachedUser")
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: "cachedUser")
+            }
+        }
+    }
     
     
     private init() {
         self.appwrite = Appwrite()
         
+        // Load cached authentication state
+        self.isAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
+        
+        // Load cached user if available
+        if let userData = UserDefaults.standard.data(forKey: "cachedUser"),
+           let decodedUser = try? JSONDecoder().decode(UserProfile.self, from: userData) {
+            self.currentUser = decodedUser
+        }
+        
+        // Still check auth state and refresh user data in background
         Task {
             self.isAuthenticated = await appwrite.checkSession()
             if isAuthenticated {
@@ -182,6 +207,8 @@ class AppwriteManager: ObservableObject {
         )
         
         guard let document = documents.documents.first else {
+            // Clear cached user if not found
+            self.currentUser = nil
             throw NSError(domain: "AppwriteError", code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "User profile not found"])
         }
@@ -246,7 +273,12 @@ class AppwriteManager: ObservableObject {
             "caption": caption ?? "",
             "likes": [],
             "comments": [],
-            "users": currentUser?.username
+            "users": currentUser?.username,
+            "created": {
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return formatter.string(from: Date())
+            }()
         ]
         
         // Create the document
@@ -295,7 +327,7 @@ class AppwriteManager: ObservableObject {
     /// Lists all videos with their metadata, sorted by creation date (newest first)
     func listVideosWithMetadata(limit: Int = 25, offset: Int = 0) async throws -> [Video] {
         do {
-            print("DEBUG: listVideosWithMetadata called with limit = \(limit), offset = \(offset).")
+            print("DEBUG: AppwriteManager - Starting listVideosWithMetadata with limit=\(limit), offset=\(offset)")
             let documents = try await appwrite.databases.listDocuments(
                 databaseId: AppwriteManager.databaseId,
                 collectionId: AppwriteManager.videosCollectionId,
@@ -306,16 +338,15 @@ class AppwriteManager: ObservableObject {
                 ]
             )
             
-            print("DEBUG: Got \(documents.documents.count) document(s) from Appwrite.")
+            print("DEBUG: AppwriteManager - Received \(documents.documents.count) documents from database")
             
             // Process documents in parallel using async/await
             return try await withThrowingTaskGroup(of: Video?.self) { group in
                 var videos: [Video] = []
                 
                 for document in documents.documents {
+                    print("DEBUG: AppwriteManager - Processing document ID: \(document.id)")
                     group.addTask {
-                        print("DEBUG: Processing document with ID = \(document.id).")
-                        
                         // Create a dictionary with all the document metadata and data
                         var documentDict: [String: Any] = [
                             "id": document.id,
@@ -329,6 +360,7 @@ class AppwriteManager: ObservableObject {
                         // Add video-specific fields
                         if let videoId = document.data["videoId"]?.value as? String {
                             documentDict["videoId"] = videoId
+                            print("DEBUG: AppwriteManager - Document \(document.id) has videoId: \(videoId)")
                         }
                         
                         // Add remaining fields
@@ -341,10 +373,15 @@ class AppwriteManager: ObservableObject {
                         if let comments = document.data["comments"]?.value as? [[String: Any]] {
                             documentDict["comments"] = comments
                         }
+                        if let created = document.data["created"]?.value as? String {
+                            documentDict["created"] = created
+                        } else {
+                            documentDict["created"] = document.createdAt
+                        }
                         
                         // Handle nested user object
                         if let userData = document.data["users"]?.value as? [String: Any] {
-                            print("DEBUG: Found user data in document: \(userData)")
+                            print("DEBUG: AppwriteManager - Document \(document.id) has user data")
                             var userDict: [String: Any] = [:]
                             
                             // Map the user fields
@@ -355,7 +392,10 @@ class AppwriteManager: ObservableObject {
                             if let updatedAt = userData["$updatedAt"] as? String { userDict["updatedAt"] = updatedAt }
                             if let permissions = userData["$permissions"] as? [String] { userDict["permissions"] = permissions }
                             if let userId = userData["userId"] as? String { userDict["userId"] = userId }
-                            if let username = userData["username"] as? String { userDict["username"] = username }
+                            if let username = userData["username"] as? String { 
+                                userDict["username"] = username
+                                print("DEBUG: AppwriteManager - Document \(document.id) associated with username: \(username)")
+                            }
                             if let name = userData["name"] as? String { userDict["name"] = name }
                             if let phone = userData["phone"] as? String { userDict["phone"] = phone }
                             if let avatarId = userData["avatarId"] as? String { userDict["avatarId"] = avatarId }
@@ -365,7 +405,9 @@ class AppwriteManager: ObservableObject {
                         }
                         
                         let jsonData = try JSONSerialization.data(withJSONObject: documentDict)
-                        return try JSONDecoder().decode(Video.self, from: jsonData)
+                        let video = try JSONDecoder().decode(Video.self, from: jsonData)
+                        print("DEBUG: AppwriteManager - Successfully decoded Video object for document \(document.id)")
+                        return video
                     }
                 }
                 
@@ -373,14 +415,16 @@ class AppwriteManager: ObservableObject {
                 for try await video in group {
                     if let video = video {
                         videos.append(video)
+                        print("DEBUG: AppwriteManager - Added video \(video.id) to results array")
                     }
                 }
                 
+                print("DEBUG: AppwriteManager - Completed processing. Returning \(videos.count) videos")
                 // Sort by creation date since parallel processing may have changed order
                 return videos.sorted { $0.createdAt > $1.createdAt }
             }
         } catch {
-            print("ERROR: Error listing videos with metadata: \(error)")
+            print("ERROR: AppwriteManager - Failed to list videos with metadata: \(error)")
             throw error
         }
     }
@@ -423,6 +467,11 @@ class AppwriteManager: ObservableObject {
             }
             if let comments = document.data["comments"]?.value as? [[String: Any]] {
                 documentDict["comments"] = comments
+            }
+            if let created = document.data["created"]?.value as? String {
+                documentDict["created"] = created
+            } else {
+                documentDict["created"] = document.createdAt // Fallback to createdAt if created is not present
             }
             if let username = document.data["users"]?.value as? String {
                 documentDict["users"] = username
@@ -485,6 +534,22 @@ class AppwriteManager: ObservableObject {
     func login(email: String, password: String) async throws {
         do {
             _ = try await appwrite.onLogin(email, password)
+            
+            // Register push target if we have a token
+            if let token = UserDefaults.standard.string(forKey: "apnsToken") {
+                do {
+                    let target = try await appwrite.account.createPushTarget(
+                        targetId: ID.unique(),
+                        identifier: token
+                    )
+                    UserDefaults.standard.set(target.id, forKey: "targetId")
+                    print("✅ Push target registered successfully: \(target.id)")
+                } catch {
+                    print("⚠️ Failed to register push target: \(error.localizedDescription)")
+                    // Don't throw the error as this is not critical for login
+                }
+            }
+            
             await MainActor.run {
                 self.isAuthenticated = true
             }
@@ -497,9 +562,24 @@ class AppwriteManager: ObservableObject {
     /// Logs out from the current session.
     func logout() async throws {
         do {
+            // Delete push target if it exists
+            if let targetId = UserDefaults.standard.string(forKey: "targetId") {
+                do {
+                    try await _ = appwrite.account.deletePushTarget(targetId: targetId)
+                    UserDefaults.standard.removeObject(forKey: "targetId")
+                    print("✅ Push target deleted successfully")
+                } catch {
+                    print("⚠️ Failed to delete push target: \(error.localizedDescription)")
+                }
+            }
+            
             try await appwrite.onLogout()
             await MainActor.run {
                 self.isAuthenticated = false
+                self.currentUser = nil
+                // Clear all auth-related cached data
+                UserDefaults.standard.removeObject(forKey: "isAuthenticated")
+                UserDefaults.standard.removeObject(forKey: "cachedUser")
             }
         } catch {
             print("Logout error: \(error)")
@@ -510,6 +590,22 @@ class AppwriteManager: ObservableObject {
     func onPhoneLogin(userId: String, secret: String) async throws {
         do {
             _ = try await appwrite.onPhoneLogin(userId, secret)
+            
+            // Register push target if we have a token
+            if let token = UserDefaults.standard.string(forKey: "apnsToken") {
+                do {
+                    let target = try await appwrite.account.createPushTarget(
+                        targetId: ID.unique(),
+                        identifier: token
+                    )
+                    UserDefaults.standard.set(target.id, forKey: "targetId")
+                    print("✅ Push target registered successfully: \(target.id)")
+                } catch {
+                    print("⚠️ Failed to register push target: \(error.localizedDescription)")
+                    // Don't throw the error as this is not critical for login
+                }
+            }
+            
             await MainActor.run {
                 self.isAuthenticated = true
             }

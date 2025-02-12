@@ -3,6 +3,12 @@ import AVFoundation
 import Combine
 
 class VideoLoadingManager: ObservableObject {
+    static let shared = VideoLoadingManager()
+    
+    private init() {
+        print("DEBUG: VideoLoadingManager - Singleton instance created")
+    }
+    
     /// Tracks which video index is currently focused/visible. 
     /// This can help us decide which ones to preload or play/pause.
     @Published var currentVideoIndex: Int = 0

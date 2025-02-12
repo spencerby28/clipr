@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum OnboardingPage: String, CaseIterable {
-    case welcome = "bell.badge.fill"
+    case welcome = "clipr"
     case capture = "camera.fill"
     case friends = "person.2.fill"
     case ready = "checkmark.circle.fill"
@@ -25,7 +25,9 @@ enum OnboardingPage: String, CaseIterable {
     }
     
     // Add styling properties
-    var symbolSize: CGFloat { 100 }
+    var symbolSize: CGFloat {
+        self == .welcome ? 140 : 100 // Make clipr logo slightly larger
+    }
     var symbolWeight: Font.Weight { .bold }
     var symbolColor: Color { .burntSienna }
     var animationDuration: Double { 0.4 }

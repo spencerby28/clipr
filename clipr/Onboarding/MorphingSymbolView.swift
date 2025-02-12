@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Custom Symobol Morphing View
+/// Custom Symbol Morphing View
 struct MorphingSymbolView: View {
     var symbol: String
     var config: Config
@@ -15,6 +15,7 @@ struct MorphingSymbolView: View {
     @State private var trigger: Bool = false
     @State private var displayingSymbol: String = ""
     @State private var nextSymbol: String = ""
+    
     var body: some View {
         Canvas { ctx, size in
             ctx.addFilter(.alphaThreshold(min: 0.4, color: config.foregroundColor))
@@ -40,18 +41,30 @@ struct MorphingSymbolView: View {
     @ViewBuilder
     func ImageView() -> some View {
         KeyframeAnimator(initialValue: CGFloat.zero, trigger: trigger) { radius in
-            Image(systemName: displayingSymbol == "" ? symbol : displayingSymbol)
-                .font(config.font)
-                .blur(radius: radius)
-                .frame(width: config.frame.width, height: config.frame.height)
-                .onChange(of: radius) { oldValue, newValue in
-                    if newValue.rounded() == config.radius {
-                        /// Animating Symbol Change
-                        withAnimation(config.symbolAnimation) {
-                            displayingSymbol = nextSymbol
-                        }
+            Group {
+                if displayingSymbol == "" ? symbol == "clipr" : displayingSymbol == "clipr" {
+                    // For custom clipr image
+                    Image("clipr-trans")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .blur(radius: radius)
+                        .frame(width: config.frame.width, height: config.frame.height)
+                } else {
+                    // For SF Symbols
+                    Image(systemName: displayingSymbol == "" ? symbol : displayingSymbol)
+                        .font(config.font)
+                        .blur(radius: radius)
+                        .frame(width: config.frame.width, height: config.frame.height)
+                }
+            }
+            .onChange(of: radius) { oldValue, newValue in
+                if newValue.rounded() == config.radius {
+                    /// Animating Symbol Change
+                    withAnimation(config.symbolAnimation) {
+                        displayingSymbol = nextSymbol
                     }
                 }
+            }
         } keyframes: { _ in
             CubicKeyframe(config.radius, duration: config.keyFrameDuration)
             CubicKeyframe(0, duration: config.keyFrameDuration)
@@ -69,5 +82,5 @@ struct MorphingSymbolView: View {
 }
 
 #Preview {
-    MorphingSymbolView(symbol: "gearshape.fill", config: .init(font: .system(size: 100, weight: .bold), frame: CGSize(width: 250, height: 200), radius: 15, foregroundColor: .black))
+    MorphingSymbolView(symbol: "clipr", config: .init(font: .system(size: 100, weight: .bold), frame: CGSize(width: 250, height: 200), radius: 15, foregroundColor: .black))
 }

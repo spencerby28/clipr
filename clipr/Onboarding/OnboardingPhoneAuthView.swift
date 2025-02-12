@@ -4,6 +4,7 @@ import Appwrite
 struct OnboardingPhoneAuthView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var navigationState: NavigationState
+    @StateObject private var appwrite = AppwriteManager.shared
     @State private var phoneNumber: String = ""
     @State private var formattedPhoneNumber: String = ""
     @State private var otpText: String = ""
@@ -13,6 +14,7 @@ struct OnboardingPhoneAuthView: View {
     @State private var isVerifying: Bool = false
     @State private var isVerified: Bool = false
     @State private var errorMessage: String = ""
+    @State private var showEmailLogin: Bool = false
     @FocusState private var isKeyboardShowing: Bool
     
     var onVerificationComplete: (() -> Void)?
@@ -80,6 +82,10 @@ struct OnboardingPhoneAuthView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 24)
+                .onLongPressGesture {
+                    showEmailLogin = true
+                    HapticManager.shared.mediumImpact()
+                }
                 
                 Spacer()
                     .frame(height: 24)
@@ -167,6 +173,12 @@ struct OnboardingPhoneAuthView: View {
                                     .opacity(0.001)
                                     .focused($isKeyboardShowing)
                             )
+                            
+                            if isVerifying {
+                                ProgressView()
+                                    .scaleEffect(1.5)
+                                    .tint(.burntSienna)
+                            }
                         }
                         .transition(.opacity)
                         .onAppear {
@@ -219,6 +231,25 @@ struct OnboardingPhoneAuthView: View {
                 verifyOTP()
             }
         }
+        .sheet(isPresented: $showEmailLogin) {
+            EmailLoginSheet()
+        }
+        .onChange(of: appwrite.isAuthenticated) { isAuthenticated in
+            if isAuthenticated {
+                Task {
+                    do {
+                        try await appwrite.loadCurrentUser()
+                        await MainActor.run {
+                            navigationState.isLoggedIn = true
+                            navigationState.hasSeenOnboarding = true
+                            dismiss()
+                        }
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            }
+        }
     }
     
     // A simple view for each OTP number box
@@ -231,18 +262,23 @@ struct OnboardingPhoneAuthView: View {
                 let charToString = String(otpText[charIndex])
                 Text(charToString)
                     .font(.title)
-                    .foregroundColor(.black)
+                    .foregroundColor(.outerSpace)
             } else {
                 Text(" ")
                     .font(.title)
-                    .foregroundColor(.gray)
+                    .foregroundColor(.cadetGray)
             }
         }
         .frame(width: 45, height: 45)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke((isKeyboardShowing && otpText.count == index) ? Color.primary : Color.gray,
-                        lineWidth: (isKeyboardShowing && otpText.count == index) ? 1 : 0.5)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke((isKeyboardShowing && otpText.count == index) ? Color.burntSienna : Color.cadetGray.opacity(0.3),
+                        lineWidth: (isKeyboardShowing && otpText.count == index) ? 1.5 : 0.5)
                 .animation(.easeInOut(duration: 0.2), value: isKeyboardShowing)
         )
     }
@@ -252,7 +288,7 @@ struct OnboardingPhoneAuthView: View {
         print("[OnboardingPhoneAuthView.swift] Initializing auth for phone number: \(phoneNumber)")
         isLoading = true
         errorMessage = ""
-        guard let url = URL(string: "https://py-server.hotshotdev.com/auth/phone/init?phone_number=\(phoneNumber)") else {
+        guard let url = URL(string: "https://sms.clipr.vip/auth/phone/init?phone_number=\(phoneNumber)") else {
             errorMessage = "Invalid URL"
             isLoading = false
             print("[OnboardingPhoneAuthView.swift] Invalid URL")
@@ -292,7 +328,9 @@ struct OnboardingPhoneAuthView: View {
         print("[OnboardingPhoneAuthView.swift] Verifying OTP: \(otpText)")
         isVerifying = true
         errorMessage = ""
-        guard let url = URL(string: "https://py-server.hotshotdev.com/auth/phone/verify") else {
+        isKeyboardShowing = false // Dismiss keyboard immediately
+        
+        guard let url = URL(string: "https://sms.clipr.vip/auth/phone/verify") else {
             errorMessage = "Invalid URL"
             isVerifying = false
             print("[OnboardingPhoneAuthView.swift] Invalid verify URL")

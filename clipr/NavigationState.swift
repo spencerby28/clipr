@@ -9,13 +9,21 @@ class NavigationState: ObservableObject {
     }
     
     @Published var selectedTab: Tab = .feed
-    @Published var isLoggedIn: Bool = false
+    @Published var isLoggedIn: Bool = false {
+        didSet {
+            UserDefaults.standard.set(isLoggedIn, forKey: "isLoggedIn")
+        }
+    }
     @Published var isCheckingAuth: Bool = true
     @Published var hasSeenOnboarding: Bool = false
     @Published var showTabMenu: Bool = false
     private let appwrite = Appwrite()
     
     init() {
+        // Load saved login state
+        self.isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+        
+        // Still check auth status in background
         Task {
             await checkAuthStatus()
         }
@@ -23,8 +31,15 @@ class NavigationState: ObservableObject {
     
     @MainActor
     func checkAuthStatus() async {
+        print("checking auth current value is: ")
+        print(self.isLoggedIn)
         isCheckingAuth = true
-        isLoggedIn = await appwrite.checkSession()
+        let authStatus = await appwrite.checkSession()
+        
+        // Only update if different to avoid unnecessary UI updates
+        if authStatus != isLoggedIn {
+            isLoggedIn = authStatus
+        }
         isCheckingAuth = false
     }
     
@@ -33,6 +48,9 @@ class NavigationState: ObservableObject {
         do {
             try await appwrite.onLogout()
             isLoggedIn = false
+            // Clear any cached user data
+            UserDefaults.standard.removeObject(forKey: "isLoggedIn")
+            UserDefaults.standard.removeObject(forKey: "cachedUser")
         } catch {
             print("Logout error: \(error)")
         }

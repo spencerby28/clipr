@@ -12,6 +12,7 @@ import Kingfisher
 struct ProfileSheet: View {
     @Binding var isPresented: Bool
     @StateObject private var appwrite = AppwriteManager.shared
+    @EnvironmentObject var navigationState: NavigationState
     @State private var showingShareSheet = false
     @State private var errorMessage: String?
     @State private var showError = false
@@ -132,7 +133,7 @@ struct ProfileSheet: View {
                         
                         Button(action: {
                             Task {
-                                try? await appwrite.logout()
+                                await navigationState.signOut()
                                 HapticManager.shared.heavyImpact()
                                 isPresented = false
                             }

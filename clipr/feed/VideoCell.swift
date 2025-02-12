@@ -18,9 +18,12 @@ struct VideoCell: View {
             let visibleHeight = max(0, min(frame.maxY, screenHeight) - max(frame.minY, 0))
             let visibility = visibleHeight / geometry.size.height
             
+          
+            
             ZStack(alignment: .center) {
                 // Show thumbnail while video is loading
                 if !isVideoLoaded, let thumbnailURL = video.metadata.thumbnailURL {
+            
                     ZStack(alignment: .bottom) {
                         KFImage(thumbnailURL)
                             .placeholder {
@@ -35,6 +38,7 @@ struct VideoCell: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipped()
                             .edgesIgnoringSafeArea(.all)
+                            
                         
                         // Pulsing overlay
                         Color.black.opacity(isPulsing ? 0.3 : 0.1)
@@ -45,6 +49,7 @@ struct VideoCell: View {
                                 value: isPulsing
                             )
                             .onAppear {
+                                print("DEBUG: VideoCell \(index) - Player view appeared, with thmbail")
                                 isPulsing = true
                             }
                             
@@ -83,12 +88,14 @@ struct VideoCell: View {
                     .frame(maxWidth: geometry.size.width, maxHeight: .infinity)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
+                        print("DEBUG: VideoCell \(index) - Player view appeared")
                         // Set up looping for this player.
                         player.actionAtItemEnd = .none
                         NotificationCenter.default.addObserver(
                             forName: .AVPlayerItemDidPlayToEndTime,
                             object: player.currentItem,
                             queue: .main) { _ in
+                                print("DEBUG: VideoCell \(index) - Video reached end, looping")
                                 player.seek(to: .zero)
                                 // Only play if we are supposed to be playing.
                                 if self.isPlaying {
@@ -99,10 +106,11 @@ struct VideoCell: View {
                         // At initial appearance, decide whether to play
                         // based on the current visibility.
                         if visibility > 0.5 {
-                            print("DEBUG: VideoCell \(index) starting play on appear")
+                            print("DEBUG: VideoCell \(index) starting play on appear with visibility \(visibility)")
                             player.play()
                             isPlaying = true
                         } else {
+                            print("DEBUG: VideoCell \(index) not playing on appear due to low visibility \(visibility)")
                             player.pause()
                             isPlaying = false
                         }
@@ -113,6 +121,7 @@ struct VideoCell: View {
                             object: player.currentItem,
                             queue: .main) { _ in
                                 if player.currentItem?.status == .readyToPlay {
+                                    print("DEBUG: VideoCell \(index) - Video ready to play, transitioning from thumbnail")
                                     withAnimation {
                                         isVideoLoaded = true
                                         isPulsing = false
@@ -121,6 +130,7 @@ struct VideoCell: View {
                             }
                     }
                     .onDisappear {
+                        print("DEBUG: VideoCell \(index) - Player view disappeared")
                         NotificationCenter.default.removeObserver(
                             self,
                             name: .AVPlayerItemDidPlayToEndTime,
@@ -215,6 +225,7 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
         // Hide status bar
         controller.setNeedsStatusBarAppearanceUpdate()
         
+        controller.allowsVideoFrameAnalysis = false
         return controller
     }
     
@@ -232,6 +243,8 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
         for subview in uiViewController.view.subviews {
             subview.isUserInteractionEnabled = false
         }
+        
+        
     }
 }
 
